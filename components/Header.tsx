@@ -34,41 +34,73 @@ export default function Header() {
   }, [])
 
   const navLinks = [
-    { href: '/products', label: 'SHOP TEES' },
-    { href: '/drops', label: 'DROPS' },
-    { href: '/products', label: 'FEATURED' },
-    { href: '/about', label: 'STORY' },
-    { href: '/contact', label: 'SUPPORT' },
+    { href: '/products', label: 'Shop All' },
+    { href: '/drops', label: 'Drops' },
+    { href: '/about', label: 'Story' },
+    { href: '/faq', label: 'FAQ' },
+    { href: '/contact', label: 'Support' },
+  ]
+
+  const metaLinks = [
+    { label: 'Drop 07 / BLOOM CORE', value: 'Ships 3.01' },
+    { label: 'Studio', value: 'Manila, PH' },
+    { label: 'Shipping', value: 'Nationwide 2-3 days' },
   ]
 
   return (
     <>
       <AnnouncementBar />
       
-      {/* Top Strip */}
-      <div className="bg-yametee-gray dark:bg-yametee-gray border-b border-yametee-lightGray/20">
-        <div className="container mx-auto px-4 py-1.5">
-          <div className="flex items-center justify-center gap-4 text-xs md:text-sm text-gray-300 dark:text-gray-400">
-            <span>DROP 07</span>
+      <div className="bg-yametee-lightGray/40 border-b border-yametee-border backdrop-blur-sm">
+        <div className="container mx-auto px-4 py-2 text-[11px] md:text-xs uppercase tracking-[0.35em] text-yametee-muted flex flex-wrap gap-4 justify-center">
+          {metaLinks.map((meta) => (
+            <span key={meta.label} className="flex items-center gap-2 text-yametee-muted">
+              <span className="font-semibold text-yametee-foreground">{meta.label}</span>
             <span className="text-yametee-red">•</span>
-            <span>MANILA STUDIO</span>
-            <span className="text-yametee-red">•</span>
-            <span>PREMIUM GRAPHIC TEES</span>
-          </div>
+              <span className="text-yametee-foreground/80">{meta.value}</span>
+            </span>
+          ))}
         </div>
       </div>
 
-      {/* Main Navigation */}
-      <header className="sticky top-0 z-50 bg-yametee-bg/95 backdrop-blur-md border-b border-yametee-lightGray/20 transition-colors duration-300">
+      <header className="sticky top-0 z-50 bg-yametee-bg/85 backdrop-blur-xl border-b border-yametee-border">
         <nav className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            {/* Logo */}
-            <Link href="/" className="flex items-center hover:opacity-90 transition-opacity">
+          <div className="flex items-center justify-between gap-6">
+            <Link href="/" className="flex items-center gap-3 group">
               <Logo size="default" />
+              <div className="hidden lg:block text-[10px] uppercase tracking-[0.5em] text-yametee-muted">
+                <p className="group-hover:text-yametee-red transition-colors">YAMETEE STUDIO</p>
+                <p className="tracking-[0.3em]">MANILA</p>
+              </div>
             </Link>
             
-            {/* Center Navigation */}
-            <div className="hidden md:flex items-center gap-8">
+            <div className="hidden md:flex items-center gap-2 px-3 py-1 rounded-full border border-yametee-border text-[11px] uppercase tracking-[0.3em] text-yametee-muted">
+              <span className="text-yametee-red">●</span> core drop shipping now
+            </div>
+
+            <div className="flex items-center gap-3">
+              <ThemeToggle />
+              <Link
+                href="/cart"
+                className="relative flex items-center gap-2 px-4 py-2 rounded-full border border-yametee-border text-xs font-semibold tracking-[0.2em] uppercase text-yametee-foreground hover:border-yametee-red transition-all"
+              >
+                Cart
+                {cartCount > 0 && (
+                  <span className="inline-flex items-center justify-center w-5 h-5 text-[10px] rounded-full bg-yametee-red text-white font-bold">
+                    {cartCount}
+                  </span>
+                )}
+              </Link>
+              <Link
+                href="/products"
+                className="hidden lg:inline-flex items-center gap-2 px-5 py-2 rounded-full bg-yametee-red text-white text-xs font-semibold tracking-[0.3em] uppercase hover:bg-yametee-redDark transition-all"
+              >
+                Shop
+              </Link>
+            </div>
+          </div>
+
+          <div className="mt-4 hidden md:flex items-center justify-center gap-1">
               {navLinks.map((link) => {
                 const isProductsLink = link.href === '/products'
                 const isDropsLink = link.href === '/drops'
@@ -80,13 +112,11 @@ export default function Header() {
                   <Link
                     key={link.href}
                     href={link.href}
-                    className={`
-                      text-sm font-medium uppercase tracking-wide transition-colors
-                      ${isActive 
-                        ? 'text-yametee-red bg-yametee-gray dark:bg-yametee-lightGray px-3 py-1.5 rounded' 
-                        : 'text-gray-700 dark:text-gray-300 hover:text-yametee-red'
-                      }
-                    `}
+                  className={`px-4 py-2 text-xs font-semibold uppercase tracking-[0.25em] rounded-full transition-all ${
+                    isActive
+                      ? 'text-yametee-red border border-yametee-red/60 bg-yametee-lightGray/40'
+                      : 'text-yametee-muted hover:text-yametee-foreground hover:border-yametee-border border border-transparent'
+                  }`}
                   >
                     {link.label}
                   </Link>
@@ -94,25 +124,7 @@ export default function Header() {
               })}
             </div>
             
-            {/* Right Side - Theme Toggle, Cart */}
-            <div className="flex items-center gap-4">
-              <ThemeToggle />
-              <Link 
-                href="/cart" 
-                className="relative text-gray-700 dark:text-gray-300 hover:text-yametee-red transition-colors font-medium uppercase text-sm tracking-wide"
-              >
-                CART
-                {cartCount > 0 && (
-                  <span className="absolute -top-2 -right-2 bg-yametee-red text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold shadow-lg">
-                    {cartCount}
-                  </span>
-                )}
-              </Link>
-            </div>
-          </div>
-
-          {/* Mobile Navigation */}
-          <div className="md:hidden mt-4 pb-2 flex items-center gap-4 overflow-x-auto scrollbar-hide">
+          <div className="md:hidden mt-4 pb-2 flex items-center gap-3 overflow-x-auto scrollbar-hide">
             {navLinks.map((link) => {
               const isProductsLink = link.href === '/products'
               const isDropsLink = link.href === '/drops'
@@ -124,13 +136,11 @@ export default function Header() {
                 <Link
                   key={link.href}
                   href={link.href}
-                  className={`
-                    text-xs font-medium uppercase tracking-wide whitespace-nowrap transition-colors
-                    ${isActive 
-                      ? 'text-yametee-red' 
-                      : 'text-gray-700 dark:text-gray-300 hover:text-yametee-red'
-                    }
-                  `}
+                  className={`px-3 py-1.5 text-[11px] uppercase tracking-[0.3em] rounded-full border ${
+                    isActive
+                      ? 'text-yametee-red border-yametee-red/60'
+                      : 'text-yametee-muted border-yametee-border hover:text-yametee-foreground'
+                  }`}
                 >
                   {link.label}
                 </Link>

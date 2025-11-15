@@ -2,6 +2,8 @@
 
 import { useState } from 'react'
 
+const perks = ['Priority access to drops', 'Studio journal + playlists', 'Exclusive sample sales']
+
 export default function EmailSignup() {
   const [email, setEmail] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -12,50 +14,60 @@ export default function EmailSignup() {
     setIsSubmitting(true)
     setMessage('')
 
-    // TODO: Implement actual email subscription API call
     setTimeout(() => {
-      setMessage('Thanks for joining! Check your email.')
+      setMessage('You’re on the list. Watch your inbox for the next drop.')
       setEmail('')
       setIsSubmitting(false)
-    }, 1000)
+    }, 900)
   }
 
   return (
-    <div className="bg-yametee-gray dark:bg-yametee-lightGray border border-yametee-lightGray/30 rounded-2xl p-6 md:p-8">
-      <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-2">
-        STAY EARLY
+    <div className="relative overflow-hidden rounded-3xl border border-yametee-border bg-gradient-to-br from-yametee-gray/80 via-yametee-gray/40 to-transparent p-6 md:p-8">
+      <div className="absolute inset-px rounded-[26px] bg-gradient-to-br from-white/10 via-transparent to-white/10 opacity-40 dark:from-white/5 dark:opacity-30" />
+      <div className="relative">
+        <p className="tag-pill text-[10px] tracking-[0.3em] text-yametee-foreground/70 dark:text-white/70 mb-3">
+          Studio Dispatch
       </p>
-      
-      <h3 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-3">
-        Be first to cop every drop.
+        <h3 className="font-heading text-3xl md:text-4xl text-yametee-foreground dark:text-white leading-tight">
+          Be first in line for every release.
       </h3>
-      
-      <p className="text-sm md:text-base text-gray-600 dark:text-gray-400 mb-6 leading-relaxed">
-        Weekly tee sketches, drop timers, and studio stories straight to your inbox.
+        <p className="text-sm md:text-base text-yametee-muted dark:text-white/70 mt-3 leading-relaxed">
+          Weekly sketches, drop timers, and playlists from the Yametee studio. Zero spam, all signal.
       </p>
       
-      <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="mt-6 space-y-3">
+          <div className="flex flex-col gap-3">
         <input
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          placeholder="email@yametee.club"
+              placeholder="you@yametee.club"
           required
-          className="w-full px-4 py-3 bg-yametee-bg dark:bg-yametee-dark border border-yametee-lightGray/30 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-yametee-red focus:border-transparent transition-all"
+              className="w-full rounded-2xl border border-yametee-border bg-white/70 dark:bg-yametee-dark/60 px-4 py-3 text-yametee-foreground dark:text-white placeholder-yametee-muted dark:placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-yametee-red/60 focus:border-transparent transition-all"
         />
-        
         <button
           type="submit"
           disabled={isSubmitting}
-          className="w-full bg-yametee-red hover:bg-yametee-redDark text-white font-semibold py-3 px-6 rounded-lg transition-all hover:scale-105 hover:shadow-lg hover:shadow-yametee-red/50 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full rounded-2xl bg-yametee-red text-white font-semibold py-3 tracking-[0.3em] uppercase text-xs hover:bg-yametee-redDark transition-all disabled:opacity-70"
         >
-          {isSubmitting ? 'JOINING...' : 'JOIN THE LIST'}
+              {isSubmitting ? 'Joining...' : 'Join The Signal'}
         </button>
-        
-        {message && (
-          <p className="text-sm text-yametee-red text-center">{message}</p>
-        )}
+          </div>
+          {message && <p className="text-xs text-yametee-red text-center">{message}</p>}
       </form>
+
+        <div className="mt-6 grid gap-3">
+          {perks.map((perk) => (
+            <div
+              key={perk}
+              className="flex items-center gap-2 text-xs uppercase tracking-[0.3em] text-yametee-muted dark:text-white/70"
+            >
+              <span className="text-yametee-red">—</span>
+              {perk}
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   )
 }

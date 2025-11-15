@@ -17,19 +17,40 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const pathname = usePathname()
   const [mounted, setMounted] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [sessionLoading, setSessionLoading] = useState(true)
+  const [session, setSession] = useState<{ name?: string | null; email?: string | null } | null>(null)
+  const [loggingOut, setLoggingOut] = useState(false)
 
   useEffect(() => {
-    setMounted(true)
-    const token = localStorage.getItem('adminToken')
-    if (!token && pathname !== '/admin/login') {
-      router.push('/admin/login')
-    }
-    // Load sidebar state from localStorage
     const savedSidebarState = localStorage.getItem('adminSidebarOpen')
     if (savedSidebarState !== null) {
       setSidebarOpen(savedSidebarState === 'true')
     }
-  }, [router, pathname])
+    setMounted(true)
+  }, [])
+
+  useEffect(() => {
+    async function loadSession() {
+      try {
+        const response = await fetch('/api/admin/session', {
+          credentials: 'include',
+        })
+
+        if (!response.ok) {
+          throw new Error('Unauthorized')
+        }
+
+        const data = await response.json()
+        setSession(data.customer)
+      } catch (error) {
+        router.replace('/admin/login')
+      } finally {
+        setSessionLoading(false)
+      }
+    }
+
+    loadSession()
+  }, [router])
 
   const toggleSidebar = () => {
     const newState = !sidebarOpen
@@ -37,7 +58,22 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     localStorage.setItem('adminSidebarOpen', String(newState))
   }
 
-  if (!mounted) {
+  const handleLogout = async () => {
+    setLoggingOut(true)
+    try {
+      await fetch('/api/admin/logout', {
+        method: 'POST',
+        credentials: 'include',
+      })
+    } catch (error) {
+      console.error('Failed to log out admin session', error)
+    } finally {
+      setLoggingOut(false)
+      router.replace('/admin/login')
+    }
+  }
+
+  if (!mounted || sessionLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white dark:bg-yametee-dark">
         <p className="text-gray-900 dark:text-white">Loading...</p>
@@ -76,14 +112,20 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             >
               View Store
             </Link>
+            <div className="text-right">
+              <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                {session?.name || session?.email}
+              </p>
+              {session?.email && (
+                <p className="text-xs text-gray-500 dark:text-gray-400">{session.email}</p>
+              )}
+            </div>
             <button
-              onClick={() => {
-                localStorage.removeItem('adminToken')
-                router.push('/admin/login')
-              }}
-              className="text-gray-600 dark:text-gray-400 hover:text-yametee-red transition-colors"
+              onClick={handleLogout}
+              disabled={loggingOut}
+              className="text-gray-600 dark:text-gray-400 hover:text-yametee-red transition-colors disabled:opacity-60"
             >
-              Logout
+              {loggingOut ? 'Logging out...' : 'Logout'}
             </button>
           </div>
         </div>

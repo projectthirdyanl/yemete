@@ -66,8 +66,9 @@ An anime-inspired Japanese streetwear e-commerce platform built with Next.js, Po
    PAYMONGO_SECRET_KEY="sk_test_..."
    PAYMONGO_PUBLIC_KEY="pk_test_..."
    PAYMONGO_WEBHOOK_SECRET="whsec_..."
-   NEXTAUTH_URL="http://localhost:3000"
-   NEXTAUTH_SECRET="your-secret-key-here"
+   ADMIN_JWT_SECRET="generate-a-long-random-string"
+   # Optional: override default (8h) admin session lifetime
+   # ADMIN_SESSION_MAX_AGE=28800
    ```
 
 4. **Set up the database**
@@ -203,8 +204,8 @@ npm start
 | `PAYMONGO_SECRET_KEY` | PayMongo secret API key | Yes |
 | `PAYMONGO_PUBLIC_KEY` | PayMongo public API key | Yes |
 | `PAYMONGO_WEBHOOK_SECRET` | PayMongo webhook secret | Yes |
-| `NEXTAUTH_URL` | Base URL of your application | Yes |
-| `NEXTAUTH_SECRET` | Secret for session encryption | Yes |
+| `ADMIN_JWT_SECRET` | Secret used to sign admin session tokens | Yes |
+| `ADMIN_SESSION_MAX_AGE` | Custom admin session lifetime in seconds (defaults to 28800) | No |
 
 ## License
 

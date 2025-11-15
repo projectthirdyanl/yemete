@@ -1,21 +1,34 @@
-import type { Metadata } from "next";
-import Script from "next/script";
-import "./globals.css";
-import { ThemeProvider } from "@/contexts/ThemeContext";
+import type { Metadata } from 'next'
+import Script from 'next/script'
+import { Space_Grotesk, Manrope } from 'next/font/google'
+import './globals.css'
+import { ThemeProvider } from '@/contexts/ThemeContext'
+
+const displayFont = Space_Grotesk({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-heading',
+})
+
+const bodyFont = Manrope({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-body',
+})
 
 export const metadata: Metadata = {
-  title: "Yametee - Anime-Inspired Japanese Streetwear",
-  description: "Premium anime-inspired Japanese streetwear T-shirts",
-};
+  title: 'Yametee - Anime-Inspired Japanese Streetwear',
+  description: 'Premium anime-inspired Japanese streetwear T-shirts',
+}
 
 export default function RootLayout({
   children,
 }: Readonly<{
-  children: React.ReactNode;
+  children: React.ReactNode
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body>
+      <body className={`${displayFont.variable} ${bodyFont.variable}`}>
         <Script
           id="theme-init"
           strategy="beforeInteractive"
@@ -51,5 +64,5 @@ export default function RootLayout({
         <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>
-  );
+  )
 }

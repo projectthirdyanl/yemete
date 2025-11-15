@@ -1,14 +1,39 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 
 export default function AdminLogin() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const redirectTarget = searchParams.get('redirectTo') || '/admin'
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    let isMounted = true
+    const checkExistingSession = async () => {
+      try {
+        const response = await fetch('/api/admin/session', {
+          credentials: 'include',
+        })
+
+        if (response.ok && isMounted) {
+          router.replace(redirectTarget)
+        }
+      } catch (error) {
+        // Ignore errors – user is likely not authenticated yet
+      }
+    }
+
+    checkExistingSession()
+
+    return () => {
+      isMounted = false
+    }
+  }, [redirectTarget, router])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -19,18 +44,16 @@ export default function AdminLogin() {
       const response = await fetch('/api/admin/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ email, password }),
       })
 
-      const data = await response.json()
-
       if (!response.ok) {
+        const data = await response.json()
         throw new Error(data.error || 'Login failed')
       }
 
-      // Store admin session (simple approach - in production use proper session management)
-      localStorage.setItem('adminToken', data.token || 'admin')
-      router.push('/admin/products')
+      router.replace(redirectTarget)
     } catch (err: any) {
       setError(err.message || 'Login failed')
       setLoading(false)

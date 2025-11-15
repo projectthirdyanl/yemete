@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyAdmin, createAdminUser } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { createAdminSessionCookie, createAdminSessionToken } from '@/lib/admin-tokens'
 
 export async function POST(request: NextRequest) {
   try {
@@ -33,15 +34,21 @@ export async function POST(request: NextRequest) {
       }, { status: 401 })
     }
 
-    // Simple token (in production, use JWT or proper session management)
-    return NextResponse.json({
-      token: 'admin',
+    const token = await createAdminSessionToken({
+      id: customer.id,
+      email: customer.email,
+    })
+
+    const response = NextResponse.json({
       customer: {
         id: customer.id,
         email: customer.email,
         name: customer.name,
       },
     })
+
+    response.cookies.set(createAdminSessionCookie(token))
+    return response
   } catch (error: any) {
     console.error('Login error:', error)
     return NextResponse.json(

@@ -1,89 +1,94 @@
 import Link from 'next/link'
 
+const footerColumns = [
+  {
+    title: 'Shop',
+    links: [
+      { label: 'All Products', href: '/products' },
+      { label: 'Latest Drops', href: '/drops' },
+      { label: 'Size Guide', href: '/size-guide' },
+      { label: 'Gift Cards', href: '/contact' },
+    ],
+  },
+  {
+    title: 'Support',
+    links: [
+      { label: 'Shipping & Delivery', href: '/shipping' },
+      { label: 'Returns & Exchanges', href: '/returns' },
+      { label: 'FAQ', href: '/faq' },
+      { label: 'Contact', href: '/contact' },
+    ],
+  },
+  {
+    title: 'Studio',
+    links: [
+      { label: 'About Yametee', href: '/about' },
+      { label: 'Journal', href: '/about' },
+      { label: 'Careers', href: '/contact' },
+      { label: 'Wholesale', href: '/contact' },
+    ],
+  },
+]
+
+const socialLinks = [
+  { label: 'Instagram', href: 'https://instagram.com', handle: '@yametee.studio' },
+  { label: 'TikTok', href: 'https://tiktok.com', handle: '@yameteeph' },
+  { label: 'Spotify', href: 'https://spotify.com', handle: 'Yametee Radio' },
+]
+
 export default function Footer() {
   return (
-    <footer className="bg-yametee-bg border-t border-yametee-lightGray/20 mt-20 transition-colors duration-300">
-      <div className="container mx-auto px-4 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
-          {/* Quick Links */}
+    <footer className="bg-[var(--yametee-card)] dark:bg-yametee-gray/60 border-t border-yametee-border mt-20 backdrop-blur-xl shadow-[0_15px_70px_rgba(0,0,0,0.05)] dark:shadow-none">
+      <div className="container mx-auto px-4 py-12 lg:py-16">
+        <div className="grid gap-10 lg:gap-16 lg:grid-cols-[2fr,1fr,1fr,1fr]">
           <div>
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-4 uppercase tracking-wide">
-              QUICK LINKS
-            </h3>
-            <ul className="space-y-2">
-              <li>
-                <Link href="/products" className="text-sm text-gray-600 dark:text-gray-400 hover:text-yametee-red transition-colors">
-                  Products
+            <p className="tag-pill text-yametee-muted dark:text-white/70 mb-4">YAMETEE CLOTHING</p>
+            <p className="font-heading text-3xl text-yametee-foreground dark:text-white max-w-sm leading-tight">
+              Anime-inspired streetwear engineered for Manila humidity.
+            </p>
+            <p className="text-sm text-yametee-muted dark:text-white/70 mt-4 max-w-md">
+              Built in small batches, printed by hand, delivered nationwide. Follow the studio for new silhouettes,
+              collaborations, and playlists straight from our Mandaluyong lab.
+            </p>
+            <div className="flex flex-wrap gap-3 mt-6">
+              {socialLinks.map((social) => (
+                <Link
+                  key={social.label}
+                  href={social.href}
+                  className="flex flex-col bg-yametee-lightGray/50 dark:bg-yametee-lightGray/40 border border-yametee-border px-4 py-3 rounded-xl text-xs uppercase tracking-[0.3em] text-yametee-muted dark:text-white/70 hover:text-yametee-foreground dark:hover:text-white transition-all"
+                >
+                  {social.label}
+                  <span className="text-sm font-semibold tracking-tight text-yametee-foreground dark:text-white">
+                    {social.handle}
+                  </span>
                 </Link>
-              </li>
-              <li>
-                <Link href="/about" className="text-sm text-gray-600 dark:text-gray-400 hover:text-yametee-red transition-colors">
-                  About
-                </Link>
-              </li>
-              <li>
-                <Link href="/size-guide" className="text-sm text-gray-600 dark:text-gray-400 hover:text-yametee-red transition-colors">
-                  Size Guide
-                </Link>
-              </li>
-              <li>
-                <Link href="/faq" className="text-sm text-gray-600 dark:text-gray-400 hover:text-yametee-red transition-colors">
-                  FAQ
-                </Link>
-              </li>
-            </ul>
+              ))}
+          </div>
           </div>
 
-          {/* Support */}
-          <div>
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-4 uppercase tracking-wide">
-              SUPPORT
-            </h3>
+          {footerColumns.map((column) => (
+            <div key={column.title}>
+              <p className="text-xs uppercase tracking-[0.4em] text-yametee-muted dark:text-white/60 mb-4">{column.title}</p>
             <ul className="space-y-2">
-              <li>
-                <Link href="/shipping" className="text-sm text-gray-600 dark:text-gray-400 hover:text-yametee-red transition-colors">
-                  Shipping & Delivery
+                {column.links.map((link) => (
+                  <li key={link.label}>
+                    <Link
+                      href={link.href}
+                      className="text-sm text-yametee-muted dark:text-white/70 hover:text-yametee-foreground dark:hover:text-white transition-colors tracking-wide"
+                    >
+                      {link.label}
                 </Link>
               </li>
-              <li>
-                <Link href="/returns" className="text-sm text-gray-600 dark:text-gray-400 hover:text-yametee-red transition-colors">
-                  Returns & Exchanges
-                </Link>
-              </li>
-              <li>
-                <Link href="/contact" className="text-sm text-gray-600 dark:text-gray-400 hover:text-yametee-red transition-colors">
-                  Contact
-                </Link>
-              </li>
+                ))}
             </ul>
           </div>
-
-          {/* Legal */}
-          <div>
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-4 uppercase tracking-wide">
-              LEGAL
-            </h3>
-            <ul className="space-y-2">
-              <li>
-                <Link href="/privacy-policy" className="text-sm text-gray-600 dark:text-gray-400 hover:text-yametee-red transition-colors">
-                  Privacy Policy
-                </Link>
-              </li>
-              <li>
-                <Link href="/terms-of-service" className="text-sm text-gray-600 dark:text-gray-400 hover:text-yametee-red transition-colors">
-                  Terms of Service
-                </Link>
-              </li>
-            </ul>
-          </div>
+          ))}
         </div>
 
-        <div className="border-t border-yametee-lightGray/20 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
-          <p className="text-xs text-gray-600 dark:text-gray-400">
-            © 2025 Yametee Studio. All rights reserved.
-          </p>
-          <p className="text-xs text-gray-600 dark:text-gray-400 uppercase tracking-wide">
-            BUILT FOR TEES MADE IN MANILA
+        <div className="border-t border-yametee-border mt-12 pt-6 flex flex-col md:flex-row justify-between items-start gap-4 text-sm text-yametee-muted dark:text-white/60">
+          <p>© {new Date().getFullYear()} Yametee Studio. All rights reserved.</p>
+          <p className="uppercase tracking-[0.4em] text-xs text-yametee-muted dark:text-white/60">
+            MANILA / TOKYO / ONLINE
           </p>
         </div>
       </div>

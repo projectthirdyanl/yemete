@@ -10,8 +10,10 @@
 2. **Configure environment**
    ```bash
    cp .env.example .env
-   # Edit .env with your database URL and PayMongo keys
+   # Edit .env with your database URL, PayMongo keys, and ADMIN_JWT_SECRET
    ```
+   - `ADMIN_JWT_SECRET` is required for signing secure admin sessions (use a long random string).
+   - Optional: override session length via `ADMIN_SESSION_MAX_AGE` (seconds, defaults to 28800 / 8 hours).
 
 3. **Set up database**
    ```bash
@@ -112,7 +114,8 @@
 - Update image upload logic in ProductForm component
 
 ### Admin Login Not Working
-- Clear browser localStorage
+- Clear browser cookies for the site (admin auth now uses HTTP-only cookies)
+- Confirm `.env` has a strong `ADMIN_JWT_SECRET` and restart the dev server after changes
 - Try creating admin via: `npm run init:admin`
 - Check database connection
 

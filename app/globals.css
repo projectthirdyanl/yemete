@@ -5,35 +5,115 @@
 /* Default (Dark Mode) */
 :root,
 :root.dark {
-  --yametee-black: #111111;
-  --yametee-red: #FF0404;
-  --yametee-white: #FFFFFF;
-  --yametee-dark: #111111;
-  --yametee-gray: #1a1a1a;
-  --yametee-light-gray: #2a2a2a;
-  --yametee-bg: #111111;
-  --yametee-red-dark: #C80609;
+  --yametee-black: #050505;
+  --yametee-red: #ff3b30;
+  --yametee-white: #fdfdfd;
+  --yametee-dark: #050505;
+  --yametee-gray: #121214;
+  --yametee-light-gray: #1f1f24;
+  --yametee-bg: #09090c;
+  --yametee-red-dark: #c80609;
+  --yametee-stone: #f6f2eb;
+  --yametee-ink: #0b0b0d;
+  --yametee-graphite: #1a1a21;
+  --yametee-border: rgba(255, 255, 255, 0.08);
+  --yametee-border-strong: rgba(255, 255, 255, 0.18);
+  --yametee-card: rgba(12, 12, 16, 0.8);
+  --yametee-foreground: #fefefe;
+  --yametee-muted: rgba(255, 255, 255, 0.72);
+  --yametee-muted-strong: rgba(255, 255, 255, 0.5);
 }
 
 /* Light Mode Colors */
 :root.light {
   --yametee-black: #111111;
-  --yametee-red: #FF0404;
-  --yametee-white: #FFFFFF;
-  --yametee-dark: #FFFFFF;
-  --yametee-gray: #F5F5F5;
-  --yametee-light-gray: #E5E5E5;
-  --yametee-bg: #FFFFFF;
-  --yametee-red-dark: #C80609;
+  --yametee-red: #ff0404;
+  --yametee-white: #ffffff;
+  --yametee-dark: #fefefe;
+  --yametee-gray: #f7f3ef;
+  --yametee-light-gray: #ece7e2;
+  --yametee-bg: #fdf8f3;
+  --yametee-red-dark: #c80609;
+  --yametee-stone: #f6f2eb;
+  --yametee-ink: #0b0b0d;
+  --yametee-graphite: #1a1a21;
+  --yametee-border: rgba(0, 0, 0, 0.07);
+  --yametee-border-strong: rgba(0, 0, 0, 0.2);
+  --yametee-card: rgba(255, 255, 255, 0.9);
+  --yametee-foreground: #0b0b0d;
+  --yametee-muted: rgba(11, 11, 13, 0.7);
+  --yametee-muted-strong: rgba(11, 11, 13, 0.45);
 }
 
 body {
-  @apply bg-yametee-bg text-gray-900 dark:text-white transition-colors duration-300;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  @apply text-gray-900 dark:text-white transition-colors duration-500;
+  font-family: var(--font-body), 'Manrope', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  color: var(--yametee-foreground);
+  background-color: var(--yametee-bg);
+  background-image:
+    radial-gradient(circle at 20% 20%, rgba(255, 59, 48, 0.08), transparent 45%),
+    radial-gradient(circle at 80% 0%, rgba(255, 59, 48, 0.07), transparent 40%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.02), transparent);
+  min-height: 100vh;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background-image: linear-gradient(transparent 0%, rgba(255, 255, 255, 0.03) 100%);
+  pointer-events: none;
+}
+
+.font-heading {
+  font-family: var(--font-heading), 'Space Grotesk', 'IBM Plex Sans', sans-serif;
+  letter-spacing: -0.01em;
+}
+
+.font-body {
+  font-family: var(--font-body), 'Manrope', 'Inter', sans-serif;
+}
+
+.glow-border {
+  border: 1px solid var(--yametee-border);
+  background: linear-gradient(135deg, rgba(255, 59, 48, 0.08), rgba(255, 255, 255, 0.02));
+  box-shadow: 0 12px 50px rgba(0, 0, 0, 0.35);
+}
+
+.card-sheen::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(120deg, transparent 0%, rgba(255, 255, 255, 0.08) 45%, transparent 55%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.card-sheen:hover::after {
+  opacity: 1;
+}
+
+.grid-overlay {
+  background-image: linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+.tag-pill {
+  @apply inline-flex items-center gap-2 px-3 py-1 rounded-full uppercase tracking-[0.2em] text-[10px] font-semibold;
+  border: 1px solid var(--yametee-border);
+}
+
+.split-border {
+  border-image: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent) 1;
+}
+
+::selection {
+  background: rgba(255, 59, 48, 0.3);
+  color: var(--yametee-white);
 }
 
 @layer utilities {
