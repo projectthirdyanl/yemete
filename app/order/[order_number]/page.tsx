@@ -46,7 +46,24 @@ export default async function OrderPage({
     notFound()
   }
 
-  const isPaid = order.paymentStatus === 'PAID'
+  const safeOrder = {
+    ...order,
+    subtotal: Number(order.subtotal),
+    shippingFee: Number(order.shippingFee),
+    grandTotal: Number(order.grandTotal),
+    items: order.items.map((item) => ({
+      ...item,
+      totalPrice: Number(item.totalPrice),
+      variant: {
+        ...item.variant,
+        price: Number(item.variant.price),
+      },
+    })),
+  }
+
+  const orderData = safeOrder
+
+  const isPaid = orderData.paymentStatus === 'PAID'
   const isSuccess = searchParams.status === 'success'
 
   return (
@@ -83,10 +100,10 @@ export default async function OrderPage({
             ) : (
               <div className="mb-4">
                 <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">
-                  Order #{order.orderNumber}
+                  Order #{orderData.orderNumber}
                 </h1>
                 <p className="text-gray-600 dark:text-gray-400">
-                  Payment Status: <span className="text-yellow-500 font-semibold">{order.paymentStatus}</span>
+                  Payment Status: <span className="text-yellow-500 font-semibold">{orderData.paymentStatus}</span>
                 </p>
               </div>
             )}
@@ -97,26 +114,26 @@ export default async function OrderPage({
             <div className="space-y-2 text-gray-700 dark:text-gray-300">
               <div className="flex justify-between">
                 <span>Order Number</span>
-                <span className="font-semibold text-gray-900 dark:text-white">{order.orderNumber}</span>
+                <span className="font-semibold text-gray-900 dark:text-white">{orderData.orderNumber}</span>
               </div>
               <div className="flex justify-between">
                 <span>Status</span>
-                <span className="font-semibold text-gray-900 dark:text-white">{order.status}</span>
+                <span className="font-semibold text-gray-900 dark:text-white">{orderData.status}</span>
               </div>
               <div className="flex justify-between">
                 <span>Payment Status</span>
                 <span
                   className={`font-semibold ${
-                    order.paymentStatus === 'PAID' ? 'text-green-500' : 'text-yellow-500'
+                    orderData.paymentStatus === 'PAID' ? 'text-green-500' : 'text-yellow-500'
                   }`}
                 >
-                  {order.paymentStatus}
+                  {orderData.paymentStatus}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span>Date</span>
                 <span className="text-gray-900 dark:text-white">
-                  {new Date(order.createdAt).toLocaleDateString()}
+                  {new Date(orderData.createdAt).toLocaleDateString()}
                 </span>
               </div>
             </div>
@@ -125,7 +142,7 @@ export default async function OrderPage({
           <div className="bg-white dark:bg-yametee-gray border border-gray-200 dark:border-gray-700 rounded-lg p-6 mb-6">
             <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Items</h2>
             <div className="space-y-4">
-              {order.items.map((item) => (
+              {orderData.items.map((item) => (
                 <div key={item.id} className="flex gap-4">
                   {item.product.images[0] && (
                     <img
@@ -150,18 +167,18 @@ export default async function OrderPage({
             </div>
           </div>
 
-          {order.address && (
+          {orderData.address && (
             <div className="bg-white dark:bg-yametee-gray border border-gray-200 dark:border-gray-700 rounded-lg p-6 mb-6">
               <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Shipping Address</h2>
               <div className="text-gray-700 dark:text-gray-300">
-                <p className="font-semibold text-gray-900 dark:text-white">{order.address.fullName}</p>
-                <p>{order.address.line1}</p>
-                {order.address.line2 && <p>{order.address.line2}</p>}
+                <p className="font-semibold text-gray-900 dark:text-white">{orderData.address.fullName}</p>
+                <p>{orderData.address.line1}</p>
+                {orderData.address.line2 && <p>{orderData.address.line2}</p>}
                 <p>
-                  {order.address.city}, {order.address.province} {order.address.postalCode}
+                  {orderData.address.city}, {orderData.address.province} {orderData.address.postalCode}
                 </p>
-                <p>{order.address.country}</p>
-                <p className="mt-2">Phone: {order.address.phone}</p>
+                <p>{orderData.address.country}</p>
+                <p className="mt-2">Phone: {orderData.address.phone}</p>
               </div>
             </div>
           )}
@@ -171,16 +188,16 @@ export default async function OrderPage({
             <div className="space-y-2">
               <div className="flex justify-between text-gray-700 dark:text-gray-300">
                 <span>Subtotal</span>
-                <span>{formatPrice(order.subtotal)}</span>
+                <span>{formatPrice(orderData.subtotal)}</span>
               </div>
               <div className="flex justify-between text-gray-700 dark:text-gray-300">
                 <span>Shipping</span>
-                <span>{formatPrice(order.shippingFee)}</span>
+                <span>{formatPrice(orderData.shippingFee)}</span>
               </div>
               <div className="border-t border-gray-200 dark:border-gray-700 pt-2 mt-2">
                 <div className="flex justify-between text-gray-900 dark:text-white font-bold text-lg">
                   <span>Total</span>
-                  <span className="text-yametee-red">{formatPrice(order.grandTotal)}</span>
+                  <span className="text-yametee-red">{formatPrice(orderData.grandTotal)}</span>
                 </div>
               </div>
             </div>

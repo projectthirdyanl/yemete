@@ -7,7 +7,7 @@ import { formatPrice } from '@/lib/utils'
 async function getProducts() {
   try {
     const products = await prisma.product.findMany({
-      where: { status: 'ACTIVE', isStandard: true },
+      where: { status: 'ACTIVE' },
       include: {
         images: {
           orderBy: [{ isPrimary: 'desc' }, { position: 'asc' }],

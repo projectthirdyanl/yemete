@@ -26,10 +26,15 @@ async function getStats() {
       _sum: { grandTotal: true },
     })
 
-    const totalCustomers = await prisma.customer.count()
-    const lowStockProducts = await prisma.variant.count({
-      where: { stockQuantity: { lt: 10 } },
-    })
+    const [totalCustomers, lowStockProducts, featuredProducts, dropProducts, standardProducts, draftProducts] =
+      await Promise.all([
+        prisma.customer.count(),
+        prisma.variant.count({ where: { stockQuantity: { lt: 10 } } }),
+        prisma.product.count({ where: { isFeatured: true, status: 'ACTIVE' } }),
+        prisma.product.count({ where: { isDrop: true, status: 'ACTIVE' } }),
+        prisma.product.count({ where: { isStandard: true, status: 'ACTIVE' } }),
+        prisma.product.count({ where: { status: 'DRAFT' } }),
+      ])
 
     const recentOrders = await prisma.order.findMany({
       take: 10,
@@ -53,6 +58,12 @@ async function getStats() {
       monthSales: Number(monthSales._sum.grandTotal || 0),
       totalCustomers,
       lowStockProducts,
+      productPlacements: {
+        featured: featuredProducts,
+        drops: dropProducts,
+        standard: standardProducts,
+        drafts: draftProducts,
+      },
       recentOrders,
     }
   } catch (error) {
@@ -65,6 +76,12 @@ async function getStats() {
       monthSales: 0,
       totalCustomers: 0,
       lowStockProducts: 0,
+      productPlacements: {
+        featured: 0,
+        drops: 0,
+        standard: 0,
+        drafts: 0,
+      },
       recentOrders: [],
     }
   }
@@ -153,6 +170,63 @@ export default async function AdminDashboard() {
           <div className="bg-white dark:bg-yametee-gray border border-gray-200 dark:border-gray-700 rounded-lg p-6">
             <p className="text-sm text-gray-600 dark:text-gray-400">Low Stock Items</p>
             <p className="text-2xl font-bold text-yametee-red mt-1">{stats.lowStockProducts}</p>
+          </div>
+        </div>
+
+        {/* Placement Overview */}
+        <div className="bg-white dark:bg-yametee-gray border border-gray-200 dark:border-gray-700 rounded-2xl p-6 space-y-4">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+              <p className="text-xs uppercase tracking-[0.4em] text-gray-500 dark:text-gray-400">Storefront</p>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mt-1">Placement Overview</h2>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Align drops, featured picks, and staple tees with the refreshed storefront sections.
+              </p>
+            </div>
+            <a
+              href="/admin/products"
+              className="inline-flex items-center gap-2 rounded-full border border-yametee-red px-4 py-2 text-xs uppercase tracking-[0.3em] text-yametee-red hover:bg-yametee-red/10 transition-colors"
+            >
+              Manage Products →
+            </a>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {[
+              {
+                label: 'Featured Grid',
+                value: stats.productPlacements.featured,
+                badge: 'Homepage hero',
+                description: 'Highlight key drops and hero tees above the fold.',
+              },
+              {
+                label: 'Drops',
+                value: stats.productPlacements.drops,
+                badge: 'Limited releases',
+                description: 'Products flagged for the Drops page and announcements.',
+              },
+              {
+                label: 'Shop Tees',
+                value: stats.productPlacements.standard,
+                badge: 'Evergreen',
+                description: 'Staple silhouettes in the main catalog.',
+              },
+              {
+                label: 'Drafts',
+                value: stats.productPlacements.drafts,
+                badge: 'Work in progress',
+                description: 'Products still hidden or awaiting approval.',
+              },
+            ].map((placement) => (
+              <div
+                key={placement.label}
+                className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-yametee-dark/40 p-4"
+              >
+                <p className="text-xs uppercase tracking-[0.3em] text-yametee-red mb-1">{placement.badge}</p>
+                <p className="text-3xl font-bold text-gray-900 dark:text-white">{placement.value}</p>
+                <p className="text-sm font-semibold text-gray-900 dark:text-white">{placement.label}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{placement.description}</p>
+              </div>
+            ))}
           </div>
         </div>
 

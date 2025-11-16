@@ -32,13 +32,34 @@ export default async function ProductPage({ params }: { params: { slug: string }
     notFound()
   }
 
+  const safeProduct = {
+    id: product.id,
+    name: product.name,
+    description: product.description,
+    brand: product.brand,
+    images: product.images.map((image) => ({
+      id: image.id,
+      imageUrl: image.imageUrl,
+      color: image.color,
+      isPrimary: image.isPrimary,
+    })),
+    variants: product.variants.map((variant) => ({
+      id: variant.id,
+      size: variant.size,
+      color: variant.color,
+      price: Number(variant.price),
+      stockQuantity: variant.stockQuantity,
+      sku: variant.sku,
+    })),
+  }
+
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
       
       <main className="flex-1 py-12 px-4">
         <div className="container mx-auto">
-          <ProductDetailClient product={product} />
+          <ProductDetailClient product={safeProduct} />
         </div>
       </main>
 
