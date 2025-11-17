@@ -4,6 +4,8 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  // For PgBouncer compatibility, add ?pgbouncer=true to DATABASE_URL
+  // Example: postgresql://user:pass@host:port/db?schema=public&pgbouncer=true
   url      = env("DATABASE_URL")
 }
 
