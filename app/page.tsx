@@ -92,6 +92,10 @@ const studioStories = [
   },
 ]
 
+// Force dynamic rendering to prevent oversized ISR page
+// This is necessary because product images may be stored as base64 data URLs
+export const dynamic = 'force-dynamic'
+
 async function getFeaturedProducts() {
   try {
     const products = await prisma.product.findMany({

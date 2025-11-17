@@ -4,6 +4,9 @@ import Footer from '@/components/Footer'
 import { prisma } from '@/lib/prisma'
 import { formatPrice } from '@/lib/utils'
 
+// Force dynamic rendering to prevent oversized ISR page
+export const dynamic = 'force-dynamic'
+
 async function getDropProducts() {
   try {
     const products = await prisma.product.findMany({
