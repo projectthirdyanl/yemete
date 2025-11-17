@@ -89,19 +89,19 @@ export default function ProductForm({ product }: ProductFormProps) {
   })
   // Get unique colors from existing variants
   const getUniqueColors = (variants: Variant[]) => {
-    return [...new Set(variants.map((v) => v.color))]
+    return [...new Set(variants.map(v => v.color))]
   }
 
   // Get sizes for a specific color from existing variants
   const getSizesForColor = (variants: Variant[], color: string) => {
-    return [...new Set(variants.filter((v) => v.color === color).map((v) => v.size))]
+    return [...new Set(variants.filter(v => v.color === color).map(v => v.size))]
   }
 
   // Initialize color-to-sizes mapping from existing variants
   const initializeColorSizes = (variants: Variant[]) => {
     const colorSizesMap: Record<string, string[]> = {}
     const colors = getUniqueColors(variants)
-    colors.forEach((color) => {
+    colors.forEach(color => {
       colorSizesMap[color] = getSizesForColor(variants, color)
     })
     return colorSizesMap
@@ -118,7 +118,7 @@ export default function ProductForm({ product }: ProductFormProps) {
   const [images, setImages] = useState<ProductImage[]>(product?.images || [])
 
   const handlePlacementToggle = (key: PlacementKey) => {
-    setFormData((prev) => ({
+    setFormData(prev => ({
       ...prev,
       [key]: !prev[key],
     }))
@@ -126,7 +126,7 @@ export default function ProductForm({ product }: ProductFormProps) {
 
   useEffect(() => {
     if (!product && formData.name) {
-      setFormData((prev) => ({
+      setFormData(prev => ({
         ...prev,
         slug: slugify(formData.name),
       }))
@@ -136,19 +136,17 @@ export default function ProductForm({ product }: ProductFormProps) {
   // Generate variants based on color-specific size selections
   useEffect(() => {
     if (selectedColors.length > 0) {
-      setVariants((currentVariants) => {
+      setVariants(currentVariants => {
         const variantMap = new Map<string, Variant>()
-        
+
         // Generate variants based on color-specific sizes
-        selectedColors.forEach((color) => {
+        selectedColors.forEach(color => {
           const sizesForColor = colorSizesMap[color] || []
-          sizesForColor.forEach((size) => {
+          sizesForColor.forEach(size => {
             const key = `${size}-${color}`
             // Check if variant already exists in current variants
-            const existingVariant = currentVariants.find(
-              (v) => v.size === size && v.color === color
-            )
-            
+            const existingVariant = currentVariants.find(v => v.size === size && v.color === color)
+
             if (existingVariant) {
               // Preserve existing variant with all its data (price, stock, SKU, etc.)
               variantMap.set(key, existingVariant)
@@ -165,7 +163,7 @@ export default function ProductForm({ product }: ProductFormProps) {
             }
           })
         })
-        
+
         // Return variants in a consistent order (sorted by color, then size)
         return Array.from(variantMap.values()).sort((a, b) => {
           if (a.color !== b.color) {
@@ -185,8 +183,8 @@ export default function ProductForm({ product }: ProductFormProps) {
   const handleColorToggle = (color: string) => {
     if (selectedColors.includes(color)) {
       // Remove color and its size mappings
-      setSelectedColors(selectedColors.filter((c) => c !== color))
-      setColorSizesMap((prev) => {
+      setSelectedColors(selectedColors.filter(c => c !== color))
+      setColorSizesMap(prev => {
         const newMap = { ...prev }
         delete newMap[color]
         return newMap
@@ -194,7 +192,7 @@ export default function ProductForm({ product }: ProductFormProps) {
     } else {
       // Add color with empty sizes (user will select sizes)
       setSelectedColors([...selectedColors, color])
-      setColorSizesMap((prev) => ({
+      setColorSizesMap(prev => ({
         ...prev,
         [color]: [],
       }))
@@ -203,12 +201,12 @@ export default function ProductForm({ product }: ProductFormProps) {
 
   // Handle size toggle for a specific color
   const handleSizeToggleForColor = (color: string, size: string) => {
-    setColorSizesMap((prev) => {
+    setColorSizesMap(prev => {
       const currentSizes = prev[color] || []
       const newSizes = currentSizes.includes(size)
-        ? currentSizes.filter((s) => s !== size)
+        ? currentSizes.filter(s => s !== size)
         : [...currentSizes, size]
-      
+
       return {
         ...prev,
         [color]: newSizes,
@@ -216,7 +214,10 @@ export default function ProductForm({ product }: ProductFormProps) {
     })
   }
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, color?: string | null) => {
+  const handleImageUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+    color?: string | null
+  ) => {
     const files = e.target.files
     if (!files) return
 
@@ -227,12 +228,12 @@ export default function ProductForm({ product }: ProductFormProps) {
     // For now, we'll use data URLs
     const fileArray = Array.from(files)
     const newImages: ProductImage[] = []
-    
+
     // Process all files
-    const promises = fileArray.map((file) => {
-      return new Promise<ProductImage>((resolve) => {
+    const promises = fileArray.map(file => {
+      return new Promise<ProductImage>(resolve => {
         const reader = new FileReader()
-        reader.onload = (event) => {
+        reader.onload = event => {
           const imageUrl = event.target?.result as string
           resolve({
             imageUrl,
@@ -247,13 +248,13 @@ export default function ProductForm({ product }: ProductFormProps) {
 
     // Wait for all files to be read
     const loadedImages = await Promise.all(promises)
-    
+
     // Use functional state update to avoid race conditions
-    setImages((currentImages) => {
+    setImages(currentImages => {
       // Check for duplicates by comparing imageUrl
-      const existingUrls = new Set(currentImages.map((img) => img.imageUrl))
-      const uniqueNewImages = loadedImages.filter((img) => !existingUrls.has(img.imageUrl))
-      
+      const existingUrls = new Set(currentImages.map(img => img.imageUrl))
+      const uniqueNewImages = loadedImages.filter(img => !existingUrls.has(img.imageUrl))
+
       if (uniqueNewImages.length === 0) {
         return currentImages // No new images to add
       }
@@ -270,7 +271,7 @@ export default function ProductForm({ product }: ProductFormProps) {
   }
 
   const handleBulkPriceUpdate = (price: string) => {
-    setVariants(variants.map((v) => ({ ...v, price })))
+    setVariants(variants.map(v => ({ ...v, price })))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -303,8 +304,9 @@ export default function ProductForm({ product }: ProductFormProps) {
       }
 
       router.push('/admin/products')
-    } catch (error: any) {
-      alert(error.message || 'Failed to save product')
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to save product'
+      alert(errorMessage)
       setLoading(false)
     }
   }
@@ -321,7 +323,7 @@ export default function ProductForm({ product }: ProductFormProps) {
               type="text"
               required
               value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              onChange={e => setFormData({ ...formData, name: e.target.value })}
               className="w-full bg-white dark:bg-yametee-dark border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-yametee-red focus:border-transparent"
             />
           </div>
@@ -331,7 +333,7 @@ export default function ProductForm({ product }: ProductFormProps) {
               type="text"
               required
               value={formData.slug}
-              onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
+              onChange={e => setFormData({ ...formData, slug: e.target.value })}
               className="w-full bg-white dark:bg-yametee-dark border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-yametee-red focus:border-transparent"
             />
           </div>
@@ -339,7 +341,7 @@ export default function ProductForm({ product }: ProductFormProps) {
             <label className="block text-gray-900 dark:text-white mb-2">Description</label>
             <textarea
               value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              onChange={e => setFormData({ ...formData, description: e.target.value })}
               rows={6}
               className="w-full bg-white dark:bg-yametee-dark border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-yametee-red focus:border-transparent"
             />
@@ -348,7 +350,7 @@ export default function ProductForm({ product }: ProductFormProps) {
             <label className="block text-gray-900 dark:text-white mb-2">Status</label>
             <select
               value={formData.status}
-              onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+              onChange={e => setFormData({ ...formData, status: e.target.value })}
               className="w-full bg-white dark:bg-yametee-dark border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-yametee-red focus:border-transparent"
             >
               <option value="DRAFT">Draft</option>
@@ -359,10 +361,11 @@ export default function ProductForm({ product }: ProductFormProps) {
           <div>
             <label className="block text-gray-900 dark:text-white mb-2">Store Placement</label>
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-              Choose where this product should appear across the storefront. Combine options as needed.
+              Choose where this product should appear across the storefront. Combine options as
+              needed.
             </p>
             <div className="grid gap-4 md:grid-cols-3">
-              {PLACEMENT_OPTIONS.map((option) => {
+              {PLACEMENT_OPTIONS.map(option => {
                 const isActive = formData[option.key]
                 return (
                   <button
@@ -383,14 +386,18 @@ export default function ProductForm({ product }: ProductFormProps) {
                     >
                       {option.title}
                     </span>
-                    <span className="text-sm text-gray-600 dark:text-gray-400">{option.description}</span>
+                    <span className="text-sm text-gray-600 dark:text-gray-400">
+                      {option.description}
+                    </span>
                   </button>
                 )
               })}
             </div>
             <p className="text-sm text-gray-600 dark:text-gray-400 mt-3">
-              Select <span className="font-semibold">Drops</span> for limited releases and <span className="font-semibold">Shop Tees</span> for standard shirts.
-              Use <span className="font-semibold">Featured</span> to highlight the item on the main site.
+              Select <span className="font-semibold">Drops</span> for limited releases and{' '}
+              <span className="font-semibold">Shop Tees</span> for standard shirts. Use{' '}
+              <span className="font-semibold">Featured</span> to highlight the item on the main
+              site.
             </p>
             {!formData.isDrop && !formData.isStandard && (
               <p className="text-sm text-yellow-600 dark:text-yellow-400 mt-2">
@@ -404,15 +411,17 @@ export default function ProductForm({ product }: ProductFormProps) {
       {/* Images */}
       <div className="bg-white dark:bg-yametee-gray border border-gray-200 dark:border-gray-700 rounded-lg p-6">
         <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Product Images</h2>
-        
+
         {/* General Images (for all colors) */}
         <div className="mb-6">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">General Images (All Colors)</h3>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
+            General Images (All Colors)
+          </h3>
           <input
             type="file"
             accept="image/*"
             multiple
-            onChange={(e) => handleImageUpload(e, null)}
+            onChange={e => handleImageUpload(e, null)}
             className="mb-4 text-gray-900 dark:text-white bg-white dark:bg-yametee-dark border border-gray-300 dark:border-gray-600 rounded-lg p-2"
           />
         </div>
@@ -420,24 +429,31 @@ export default function ProductForm({ product }: ProductFormProps) {
         {/* Color-Specific Images */}
         {selectedColors.length > 0 && (
           <div className="mb-6">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Color-Specific Images</h3>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
+              Color-Specific Images
+            </h3>
             <div className="space-y-4">
-              {selectedColors.map((color) => {
-                const colorImages = images.filter((img) => img.color === color)
+              {selectedColors.map(color => {
+                const colorImages = images.filter(img => img.color === color)
                 return (
-                  <div key={color} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-                    <h4 className="text-gray-900 dark:text-white font-medium mb-2">{color} Color Images</h4>
+                  <div
+                    key={color}
+                    className="border border-gray-200 dark:border-gray-700 rounded-lg p-4"
+                  >
+                    <h4 className="text-gray-900 dark:text-white font-medium mb-2">
+                      {color} Color Images
+                    </h4>
                     <input
                       type="file"
                       accept="image/*"
                       multiple
-                      onChange={(e) => handleImageUpload(e, color)}
+                      onChange={e => handleImageUpload(e, color)}
                       className="mb-3 text-gray-900 dark:text-white bg-white dark:bg-yametee-dark border border-gray-300 dark:border-gray-600 rounded-lg p-2 w-full"
                     />
                     {colorImages.length > 0 && (
                       <div className="grid grid-cols-4 gap-2 mt-3">
                         {colorImages.map((image, idx) => {
-                          const globalIndex = images.findIndex((img) => img === image)
+                          const globalIndex = images.findIndex(img => img === image)
                           return (
                             <div key={idx} className="relative">
                               <img
@@ -448,8 +464,8 @@ export default function ProductForm({ product }: ProductFormProps) {
                               <button
                                 type="button"
                                 onClick={() => {
-                                  setImages((currentImages) => 
-                                    currentImages.filter((img) => img.imageUrl !== image.imageUrl)
+                                  setImages(currentImages =>
+                                    currentImages.filter(img => img.imageUrl !== image.imageUrl)
                                   )
                                 }}
                                 className="absolute top-1 right-1 bg-yametee-red text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
@@ -471,7 +487,9 @@ export default function ProductForm({ product }: ProductFormProps) {
         {/* All Images Preview */}
         {images.length > 0 && (
           <div>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">All Images Preview</h3>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
+              All Images Preview
+            </h3>
             <div className="grid grid-cols-4 gap-4">
               {images.map((image, index) => (
                 <div key={index} className="relative">
@@ -483,9 +501,7 @@ export default function ProductForm({ product }: ProductFormProps) {
                   <button
                     type="button"
                     onClick={() => {
-                      setImages((currentImages) => 
-                        currentImages.filter((_, i) => i !== index)
-                      )
+                      setImages(currentImages => currentImages.filter((_, i) => i !== index))
                     }}
                     className="absolute top-2 right-2 bg-yametee-red text-white rounded-full w-6 h-6 flex items-center justify-center text-xs"
                   >
@@ -495,7 +511,7 @@ export default function ProductForm({ product }: ProductFormProps) {
                     <button
                       type="button"
                       onClick={() => {
-                        setImages((currentImages) =>
+                        setImages(currentImages =>
                           currentImages.map((img, i) => ({
                             ...img,
                             isPrimary: i === index,
@@ -526,14 +542,16 @@ export default function ProductForm({ product }: ProductFormProps) {
       {/* Variants */}
       <div className="bg-white dark:bg-yametee-gray border border-gray-200 dark:border-gray-700 rounded-lg p-6">
         <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Variants</h2>
-        
+
         <div className="mb-6">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Select Colors</h3>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
+            Select Colors
+          </h3>
           <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
             Select colors first, then choose available sizes for each color
           </p>
           <div className="flex gap-2 flex-wrap">
-            {COLORS.map((color) => (
+            {COLORS.map(color => (
               <button
                 key={color}
                 type="button"
@@ -553,17 +571,22 @@ export default function ProductForm({ product }: ProductFormProps) {
         {/* Per-Color Size Selection */}
         {selectedColors.length > 0 && (
           <div className="mb-6">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Select Sizes for Each Color</h3>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
+              Select Sizes for Each Color
+            </h3>
             <div className="space-y-4">
-              {selectedColors.map((color) => {
+              {selectedColors.map(color => {
                 const sizesForColor = colorSizesMap[color] || []
                 return (
-                  <div key={color} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                  <div
+                    key={color}
+                    className="border border-gray-200 dark:border-gray-700 rounded-lg p-4"
+                  >
                     <h4 className="text-gray-900 dark:text-white font-medium mb-3">
                       {color} - Available Sizes
                     </h4>
                     <div className="flex gap-2 flex-wrap">
-                      {SIZES.map((size) => (
+                      {SIZES.map(size => (
                         <button
                           key={size}
                           type="button"
@@ -580,7 +603,8 @@ export default function ProductForm({ product }: ProductFormProps) {
                     </div>
                     {sizesForColor.length === 0 && (
                       <p className="text-sm text-yellow-600 dark:text-yellow-400 mt-2">
-                        ⚠️ No sizes selected for {color}. Variants will not be created for this color.
+                        ⚠️ No sizes selected for {color}. Variants will not be created for this
+                        color.
                       </p>
                     )}
                   </div>
@@ -599,7 +623,7 @@ export default function ProductForm({ product }: ProductFormProps) {
                   type="number"
                   placeholder="599"
                   className="bg-white dark:bg-yametee-dark border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-yametee-red focus:border-transparent"
-                  onBlur={(e) => {
+                  onBlur={e => {
                     if (e.target.value) {
                       handleBulkPriceUpdate(e.target.value)
                     }
@@ -607,7 +631,7 @@ export default function ProductForm({ product }: ProductFormProps) {
                 />
                 <button
                   type="button"
-                  onClick={(e) => {
+                  onClick={e => {
                     const input = e.currentTarget.previousElementSibling as HTMLInputElement
                     if (input.value) {
                       handleBulkPriceUpdate(input.value)
@@ -640,7 +664,7 @@ export default function ProductForm({ product }: ProductFormProps) {
                         <input
                           type="text"
                           value={variant.sku}
-                          onChange={(e) => {
+                          onChange={e => {
                             const newVariants = [...variants]
                             newVariants[index].sku = e.target.value
                             setVariants(newVariants)
@@ -652,7 +676,7 @@ export default function ProductForm({ product }: ProductFormProps) {
                         <input
                           type="number"
                           value={variant.price}
-                          onChange={(e) => {
+                          onChange={e => {
                             const newVariants = [...variants]
                             newVariants[index].price = e.target.value
                             setVariants(newVariants)
@@ -664,7 +688,7 @@ export default function ProductForm({ product }: ProductFormProps) {
                         <input
                           type="number"
                           value={variant.stockQuantity}
-                          onChange={(e) => {
+                          onChange={e => {
                             const newVariants = [...variants]
                             newVariants[index].stockQuantity = parseInt(e.target.value) || 0
                             setVariants(newVariants)

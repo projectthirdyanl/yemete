@@ -8,16 +8,13 @@ import { getCartSessionId, getOrCreateCart } from '@/lib/cart'
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { itemId: string } }
+  { params }: { params: Promise<{ itemId: string }> }
 ) {
   try {
-    const { itemId } = params
+    const { itemId } = await params
 
     if (!itemId) {
-      return NextResponse.json(
-        { error: 'Item ID is required' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Item ID is required' }, { status: 400 })
     }
 
     const sessionId = await getCartSessionId()
@@ -29,17 +26,11 @@ export async function DELETE(
     })
 
     if (!cartItem) {
-      return NextResponse.json(
-        { error: 'Cart item not found' },
-        { status: 404 }
-      )
+      return NextResponse.json({ error: 'Cart item not found' }, { status: 404 })
     }
 
     if (cartItem.cartId !== cart.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 403 }
-      )
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
     }
 
     // Delete the item
@@ -49,7 +40,7 @@ export async function DELETE(
 
     // Return updated cart
     const updatedCart = await getOrCreateCart(sessionId)
-    const cartItems = updatedCart.items.map((item) => ({
+    const cartItems = updatedCart.items.map(item => ({
       id: item.id,
       productId: item.productId,
       variantId: item.variantId,
@@ -67,11 +58,9 @@ export async function DELETE(
       items: cartItems,
       itemCount: cartItems.reduce((sum, item) => sum + item.quantity, 0),
     })
-  } catch (error: any) {
+  } catch (error) {
     console.error('Delete cart item error:', error)
-    return NextResponse.json(
-      { error: error.message || 'Failed to remove item from cart' },
-      { status: 500 }
-    )
+    const errorMessage = error instanceof Error ? error.message : 'Failed to remove item from cart'
+    return NextResponse.json({ error: errorMessage }, { status: 500 })
   }
 }

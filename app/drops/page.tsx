@@ -37,26 +37,35 @@ export default async function DropsPage() {
       <main className="flex-1 py-12 px-4">
         <div className="container mx-auto">
           <div className="max-w-3xl mb-12">
-            <p className="text-xs uppercase tracking-[0.3em] text-gray-500 dark:text-gray-400">Limited Releases</p>
-            <h1 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mt-4">Drops</h1>
+            <p className="text-xs uppercase tracking-[0.3em] text-gray-500 dark:text-gray-400">
+              Limited Releases
+            </p>
+            <h1 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mt-4">
+              Drops
+            </h1>
             <p className="text-base md:text-lg text-gray-700 dark:text-gray-300 mt-4">
-              Fresh artwork, small batches, zero restocks. When it&apos;s gone, it&apos;s gone. Tap in before the drop sells out.
+              Fresh artwork, small batches, zero restocks. When it&apos;s gone, it&apos;s gone. Tap
+              in before the drop sells out.
             </p>
           </div>
 
           {products.length === 0 ? (
             <div className="text-center py-20">
-              <p className="text-gray-600 dark:text-gray-400 text-xl mb-3">No drops available right now.</p>
+              <p className="text-gray-600 dark:text-gray-400 text-xl mb-3">
+                No drops available right now.
+              </p>
               <p className="text-gray-500 dark:text-gray-500">
                 Follow us on TikTok @yametee for the next release announcement.
               </p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {products.map((product) => {
-                const variant = product.variants[0]
-                const primaryImage = product.images[0]
-                const secondaryImage = product.images[1]
+              {products.map(product => {
+                const variant = product.variants?.[0]
+                const primaryImage = product.images?.[0]
+                const secondaryImage = product.images?.[1]
+
+                if (!variant) return null
 
                 return (
                   <Link
@@ -98,7 +107,9 @@ export default async function DropsPage() {
                           <p className="text-yametee-red text-xl font-bold">
                             {formatPrice(variant.price.toString())}
                           </p>
-                          <p className="text-gray-400 text-sm uppercase tracking-wide">Limited Qty</p>
+                          <p className="text-gray-400 text-sm uppercase tracking-wide">
+                            Limited Qty
+                          </p>
                         </div>
                       )}
                     </div>
@@ -114,4 +125,3 @@ export default async function DropsPage() {
     </div>
   )
 }
-

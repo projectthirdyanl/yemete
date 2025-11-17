@@ -24,10 +24,7 @@ async function getInventory() {
           },
         },
       },
-      orderBy: [
-        { stockQuantity: 'asc' },
-        { product: { name: 'asc' } },
-      ],
+      orderBy: [{ stockQuantity: 'asc' }, { product: { name: 'asc' } }],
     })
 
     return variants
@@ -40,12 +37,9 @@ async function getInventory() {
 export default async function AdminInventoryPage() {
   const variants = await getInventory()
 
-  const lowStock = variants.filter((v) => v.stockQuantity < 10)
-  const outOfStock = variants.filter((v) => v.stockQuantity === 0)
-  const totalValue = variants.reduce(
-    (sum, v) => sum + Number(v.price) * v.stockQuantity,
-    0
-  )
+  const lowStock = variants.filter(v => v.stockQuantity < 10)
+  const outOfStock = variants.filter(v => v.stockQuantity === 0)
+  const totalValue = variants.reduce((sum, v) => sum + Number(v.price) * v.stockQuantity, 0)
 
   return (
     <AdminLayout>
@@ -124,77 +118,85 @@ export default async function AdminInventoryPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {variants.map((variant) => (
-                    <tr
-                      key={variant.id}
-                      className={`border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-yametee-dark/50 transition-colors ${
-                        variant.stockQuantity === 0
-                          ? 'bg-red-50 dark:bg-red-900/10'
-                          : variant.stockQuantity < 10
-                          ? 'bg-yellow-50 dark:bg-yellow-900/10'
-                          : ''
-                      }`}
-                    >
-                      <td className="p-4">
-                        <div className="flex items-center gap-3">
-                          {variant.product.images[0] && (
-                            <img
-                              src={variant.product.images[0].imageUrl}
-                              alt={variant.product.name}
-                              className="w-12 h-12 object-cover rounded"
-                            />
-                          )}
-                          <div>
-                            <Link
-                              href={`/admin/products/${variant.productId}`}
-                              className="font-medium text-gray-900 dark:text-white hover:text-yametee-red"
-                            >
-                              {variant.product.name}
-                            </Link>
-                            <span
-                              className={`ml-2 px-2 py-0.5 rounded text-xs ${
-                                variant.product.status === 'ACTIVE'
-                                  ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-                                  : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-400'
-                              }`}
-                            >
-                              {variant.product.status}
-                            </span>
+                  {variants.map(variant => {
+                    // Convert Prisma Decimal to number for client component
+                    const safeVariant = {
+                      id: variant.id,
+                      stockQuantity: variant.stockQuantity,
+                    }
+
+                    return (
+                      <tr
+                        key={variant.id}
+                        className={`border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-yametee-dark/50 transition-colors ${
+                          variant.stockQuantity === 0
+                            ? 'bg-red-50 dark:bg-red-900/10'
+                            : variant.stockQuantity < 10
+                              ? 'bg-yellow-50 dark:bg-yellow-900/10'
+                              : ''
+                        }`}
+                      >
+                        <td className="p-4">
+                          <div className="flex items-center gap-3">
+                            {variant.product.images[0] && (
+                              <img
+                                src={variant.product.images[0].imageUrl}
+                                alt={variant.product.name}
+                                className="w-12 h-12 object-cover rounded"
+                              />
+                            )}
+                            <div>
+                              <Link
+                                href={`/admin/products/${variant.productId}`}
+                                className="font-medium text-gray-900 dark:text-white hover:text-yametee-red"
+                              >
+                                {variant.product.name}
+                              </Link>
+                              <span
+                                className={`ml-2 px-2 py-0.5 rounded text-xs ${
+                                  variant.product.status === 'ACTIVE'
+                                    ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+                                    : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-400'
+                                }`}
+                              >
+                                {variant.product.status}
+                              </span>
+                            </div>
                           </div>
-                        </div>
-                      </td>
-                      <td className="p-4 text-gray-900 dark:text-white font-mono text-sm">
-                        {variant.sku}
-                      </td>
-                      <td className="p-4 text-gray-900 dark:text-white">{variant.size}</td>
-                      <td className="p-4 text-gray-900 dark:text-white">{variant.color}</td>
-                      <td className="p-4 text-gray-900 dark:text-white">
-                        {new Intl.NumberFormat('en-PH', {
-                          style: 'currency',
-                          currency: 'PHP',
-                        }).format(Number(variant.price))}
-                      </td>
-                      <td className="p-4">
-                        <span
-                          className={`font-semibold ${
-                            variant.stockQuantity === 0
-                              ? 'text-red-600 dark:text-red-400'
-                              : variant.stockQuantity < 10
-                              ? 'text-yellow-600 dark:text-yellow-400'
-                              : 'text-gray-900 dark:text-white'
-                          }`}
-                        >
-                          {variant.stockQuantity}
-                        </span>
-                      </td>
-                      <td className="p-4 text-gray-600 dark:text-gray-400">
-                        {variant._count.orderItems}
-                      </td>
-                      <td className="p-4">
-                        <UpdateStockForm variant={variant} />
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                        <td className="p-4 text-gray-900 dark:text-white font-mono text-sm">
+                          {variant.sku}
+                        </td>
+                        <td className="p-4 text-gray-900 dark:text-white">{variant.size}</td>
+                        <td className="p-4 text-gray-900 dark:text-white">{variant.color}</td>
+                        <td className="p-4 text-gray-900 dark:text-white">
+                          {new Intl.NumberFormat('en-PH', {
+                            style: 'currency',
+                            currency: 'PHP',
+                          }).format(Number(variant.price))}
+                        </td>
+                        <td className="p-4">
+                          <span
+                            className={`font-semibold ${
+                              variant.stockQuantity === 0
+                                ? 'text-red-600 dark:text-red-400'
+                                : variant.stockQuantity < 10
+                                  ? 'text-yellow-600 dark:text-yellow-400'
+                                  : 'text-gray-900 dark:text-white'
+                            }`}
+                          >
+                            {variant.stockQuantity}
+                          </span>
+                        </td>
+                        <td className="p-4 text-gray-600 dark:text-gray-400">
+                          {variant._count.orderItems}
+                        </td>
+                        <td className="p-4">
+                          <UpdateStockForm variant={safeVariant} />
+                        </td>
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
             </div>

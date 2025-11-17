@@ -1,12 +1,21 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import LoadingSpinner from '@/components/LoadingSpinner'
 
-export default function AdminLogin() {
+export const dynamic = 'force-dynamic'
+
+function AdminLoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const redirectTarget = searchParams.get('redirectTo') || '/admin'
+
+  // Validate redirectTo to prevent open redirects
+  const rawRedirect = searchParams.get('redirectTo') || '/admin'
+  const redirectTarget =
+    rawRedirect.startsWith('/admin') && !rawRedirect.includes('..') && !rawRedirect.includes('//')
+      ? rawRedirect
+      : '/admin'
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -54,8 +63,9 @@ export default function AdminLogin() {
       }
 
       router.replace(redirectTarget)
-    } catch (err: any) {
-      setError(err.message || 'Login failed')
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Login failed'
+      setError(errorMessage)
       setLoading(false)
     }
   }
@@ -63,8 +73,10 @@ export default function AdminLogin() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-white dark:bg-yametee-dark px-4 transition-colors duration-300">
       <div className="w-full max-w-md bg-white dark:bg-yametee-gray border border-gray-200 dark:border-gray-700 rounded-lg p-8 shadow-lg">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-8 text-center">Admin Login</h1>
-        
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-8 text-center">
+          Admin Login
+        </h1>
+
         {error && (
           <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 mb-4 text-red-700 dark:text-red-400 text-sm">
             {error}
@@ -85,7 +97,7 @@ export default function AdminLogin() {
               type="email"
               required
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={e => setEmail(e.target.value)}
               className="w-full bg-white dark:bg-yametee-dark border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-yametee-red focus:border-transparent"
             />
           </div>
@@ -95,7 +107,7 @@ export default function AdminLogin() {
               type="password"
               required
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={e => setPassword(e.target.value)}
               className="w-full bg-white dark:bg-yametee-dark border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-yametee-red focus:border-transparent"
             />
           </div>
@@ -109,5 +121,13 @@ export default function AdminLogin() {
         </form>
       </div>
     </div>
+  )
+}
+
+export default function AdminLogin() {
+  return (
+    <Suspense fallback={<LoadingSpinner fullScreen={true} size="large" />}>
+      <AdminLoginForm />
+    </Suspense>
   )
 }

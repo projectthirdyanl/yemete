@@ -1,15 +1,20 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useCallback, memo } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { formatPrice } from '@/lib/utils'
+import { sanitizeHtmlForReact } from '@/lib/sanitize'
 import ImageCarousel from './ImageCarousel'
-import { 
-  CheckIcon, 
-  TruckIcon, 
+import { Button, Badge } from '@/components/ui'
+import { useAddToCart } from '@/hooks/useCart'
+import { useToast } from '@/contexts/ToastContext'
+import {
+  CheckIcon,
+  TruckIcon,
   ShieldCheckIcon,
   HeartIcon,
-  ShareIcon 
+  ShareIcon,
 } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
 
@@ -17,7 +22,7 @@ interface Variant {
   id: string
   size: string
   color: string
-  price: any
+  price: number | string
   stockQuantity: number
   sku: string
 }
@@ -44,53 +49,60 @@ interface ProductDetailClientProps {
 
 const SIZES = ['S', 'M', 'L', 'XL', '2XL']
 
-export default function ProductDetailClient({ product }: ProductDetailClientProps) {
+function ProductDetailClient({ product }: ProductDetailClientProps) {
   const [selectedSize, setSelectedSize] = useState<string>('')
   const [selectedColor, setSelectedColor] = useState<string>('')
   const [quantity, setQuantity] = useState(1)
   const [isWishlisted, setIsWishlisted] = useState(false)
-  const [showShareMenu, setShowShareMenu] = useState(false)
+  const addToCart = useAddToCart()
+  const { success, error: showError } = useToast()
 
-  const selectedVariant = product.variants.find(
-    (v) => v.size === selectedSize && v.color === selectedColor
+  const selectedVariant = useMemo(
+    () => product.variants.find(v => v.size === selectedSize && v.color === selectedColor),
+    [product.variants, selectedSize, selectedColor]
   )
 
-  const availableSizes = Array.from(
-    new Set(
-      product.variants
-        .filter((v) => v.color === selectedColor && v.stockQuantity > 0)
-        .map((v) => v.size)
-    )
+  const availableSizes = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          product.variants
+            .filter(v => v.color === selectedColor && v.stockQuantity > 0)
+            .map(v => v.size)
+        )
+      ),
+    [product.variants, selectedColor]
   )
 
   // Get all colors that exist in variants (enabled in admin) - regardless of stock
-  // This ensures colors enabled in admin are visible in store, even if out of stock
-  const enabledColors = Array.from(
-    new Set(product.variants.map((v) => v.color))
-  ).sort()
+  const enabledColors = useMemo(
+    () => Array.from(new Set(product.variants.map(v => v.color))).sort(),
+    [product.variants]
+  )
 
   // Get all colors that have stock available (for any size)
-  const availableColors = Array.from(
-    new Set(
-      product.variants
-        .filter((v) => v.stockQuantity > 0)
-        .map((v) => v.color)
-    )
+  const availableColors = useMemo(
+    () => Array.from(new Set(product.variants.filter(v => v.stockQuantity > 0).map(v => v.color))),
+    [product.variants]
   )
-  
+
   // Get colors available for selected size (used for size filtering)
-  const availableColorsForSize = Array.from(
-    new Set(
-      product.variants
-        .filter((v) => v.size === selectedSize && v.stockQuantity > 0)
-        .map((v) => v.color)
-    )
+  const availableColorsForSize = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          product.variants
+            .filter(v => v.size === selectedSize && v.stockQuantity > 0)
+            .map(v => v.color)
+        )
+      ),
+    [product.variants, selectedSize]
   )
 
   // Auto-select first available color and size on mount
   useEffect(() => {
     if (!selectedColor && product.variants.length > 0) {
-      const firstAvailableColor = product.variants.find((v) => v.stockQuantity > 0)?.color
+      const firstAvailableColor = product.variants.find(v => v.stockQuantity > 0)?.color
       if (firstAvailableColor) {
         setSelectedColor(firstAvailableColor)
       }
@@ -103,56 +115,44 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
     }
   }, [selectedColor, availableSizes, selectedSize])
 
-  const handleAddToCart = async () => {
+  const handleAddToCart = useCallback(async () => {
     if (!selectedVariant) {
-      alert('Please select size and color')
+      showError('Please select size and color')
       return
     }
 
     if (selectedVariant.stockQuantity < quantity) {
-      alert('Not enough stock available')
+      showError('Not enough stock available')
       return
     }
 
     try {
-      const response = await fetch('/api/cart', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          variantId: selectedVariant.id,
-          quantity,
-        }),
+      await addToCart.mutateAsync({
+        variantId: selectedVariant.id,
+        quantity,
       })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to add to cart')
-      }
-
-      // Show success notification
-      const notification = document.createElement('div')
-      notification.className = 'fixed top-20 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-fade-in'
-      notification.textContent = '✓ Added to cart!'
-      document.body.appendChild(notification)
-      setTimeout(() => notification.remove(), 3000)
-      
-      // Dispatch event to update cart count in header
-      window.dispatchEvent(new Event('cartUpdated'))
-    } catch (error: any) {
-      alert(error.message || 'Failed to add to cart')
+      success(`Added ${quantity} ${quantity === 1 ? 'item' : 'items'} to cart!`)
+      setQuantity(1) // Reset quantity after successful add
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to add to cart'
+      showError(errorMessage)
     }
-  }
+  }, [selectedVariant, quantity, addToCart, success, showError])
 
-  const stockStatus = selectedVariant
-    ? selectedVariant.stockQuantity > 10
-      ? { text: 'In Stock', color: 'text-green-400', bg: 'bg-green-500/10' }
-      : selectedVariant.stockQuantity > 0
-      ? { text: 'Low Stock', color: 'text-yellow-400', bg: 'bg-yellow-500/10' }
-      : { text: 'Out of Stock', color: 'text-red-400', bg: 'bg-red-500/10' }
-    : { text: 'Select Size & Color', color: 'text-gray-400', bg: 'bg-gray-500/10' }
+  const stockStatus = useMemo(() => {
+    if (!selectedVariant) {
+      return { text: 'Select Size & Color', variant: 'default' as const }
+    }
+    if (selectedVariant.stockQuantity > 10) {
+      return { text: 'In Stock', variant: 'success' as const }
+    }
+    if (selectedVariant.stockQuantity > 0) {
+      return { text: 'Low Stock', variant: 'warning' as const }
+    }
+    return { text: 'Out of Stock', variant: 'error' as const }
+  }, [selectedVariant])
 
-  const handleShare = async () => {
+  const handleShare = useCallback(async () => {
     if (navigator.share) {
       try {
         await navigator.share({
@@ -161,14 +161,18 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
           url: window.location.href,
         })
       } catch (err) {
-        console.log('Error sharing:', err)
+        // User cancelled or error occurred
       }
     } else {
       // Fallback: copy to clipboard
-      navigator.clipboard.writeText(window.location.href)
-      alert('Link copied to clipboard!')
+      try {
+        await navigator.clipboard.writeText(window.location.href)
+        success('Link copied to clipboard!')
+      } catch (err) {
+        showError('Failed to copy link')
+      }
     }
-  }
+  }, [product.name, success, showError])
 
   return (
     <div className="max-w-7xl mx-auto">
@@ -189,8 +193,10 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
             <p className="text-yametee-red font-semibold text-sm uppercase tracking-wide mb-2">
               {product.brand}
             </p>
-            <h1 className="text-4xl lg:text-5xl font-bold text-gray-900 dark:text-white mb-4">{product.name}</h1>
-            
+            <h1 className="text-4xl lg:text-5xl font-bold text-gray-900 dark:text-white mb-4">
+              {product.name}
+            </h1>
+
             {selectedVariant && (
               <div className="flex items-baseline gap-3 mt-4">
                 <p className="text-4xl font-bold text-yametee-red">
@@ -205,31 +211,34 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
           </div>
 
           {/* Stock Status */}
-          <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg ${stockStatus.bg} ${stockStatus.color}`}>
-            <CheckIcon className="w-5 h-5" />
-            <span className="font-semibold">{stockStatus.text}</span>
-            {selectedVariant && selectedVariant.stockQuantity > 0 && (
-              <span className="text-sm opacity-75">
-                ({selectedVariant.stockQuantity} available)
-              </span>
-            )}
+          <div className="inline-flex items-center gap-2">
+            <Badge variant={stockStatus.variant} size="md">
+              <CheckIcon className="w-4 h-4 mr-1" aria-hidden="true" />
+              {stockStatus.text}
+              {selectedVariant && selectedVariant.stockQuantity > 0 && (
+                <span className="ml-1 opacity-75">({selectedVariant.stockQuantity} available)</span>
+              )}
+            </Badge>
           </div>
 
           {/* Color Selection */}
           <div>
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-              Color: <span className="text-gray-600 dark:text-gray-400 font-normal">{selectedColor || 'Select'}</span>
+              Color:{' '}
+              <span className="text-gray-600 dark:text-gray-400 font-normal">
+                {selectedColor || 'Select'}
+              </span>
             </h3>
             <div className="flex gap-3 flex-wrap">
-              {enabledColors.map((color) => {
+              {enabledColors.map(color => {
                 // Check if color has any variants (enabled in admin)
-                const hasVariant = product.variants.some((v) => v.color === color)
+                const hasVariant = product.variants.some(v => v.color === color)
                 // Check if color has stock available
                 const hasStock = product.variants.some(
-                  (v) => v.color === color && v.stockQuantity > 0
+                  v => v.color === color && v.stockQuantity > 0
                 )
                 const isSelected = selectedColor === color
-                
+
                 return (
                   <button
                     key={color}
@@ -244,10 +253,10 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
                       isSelected
                         ? 'bg-yametee-red text-white border-yametee-red shadow-lg shadow-yametee-red/50'
                         : hasStock
-                        ? 'bg-gray-100 dark:bg-yametee-gray text-gray-900 dark:text-white border-gray-300 dark:border-yametee-lightGray hover:border-yametee-red/50 hover:bg-gray-200 dark:hover:bg-yametee-lightGray'
-                        : hasVariant
-                        ? 'bg-gray-100 dark:bg-yametee-gray text-gray-900 dark:text-white border-gray-300 dark:border-yametee-lightGray opacity-75 hover:opacity-100'
-                        : 'bg-gray-50 dark:bg-yametee-dark text-gray-400 dark:text-gray-500 border-gray-200 dark:border-yametee-gray cursor-not-allowed opacity-50'
+                          ? 'bg-gray-100 dark:bg-yametee-gray text-gray-900 dark:text-white border-gray-300 dark:border-yametee-lightGray hover:border-yametee-red/50 hover:bg-gray-200 dark:hover:bg-yametee-lightGray'
+                          : hasVariant
+                            ? 'bg-gray-100 dark:bg-yametee-gray text-gray-900 dark:text-white border-gray-300 dark:border-yametee-lightGray opacity-75 hover:opacity-100'
+                            : 'bg-gray-50 dark:bg-yametee-dark text-gray-400 dark:text-gray-500 border-gray-200 dark:border-yametee-gray cursor-not-allowed opacity-50'
                     }`}
                   >
                     {color}
@@ -263,15 +272,18 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
           {/* Size Selection */}
           <div>
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-              Size: <span className="text-gray-600 dark:text-gray-400 font-normal">{selectedSize || 'Select'}</span>
+              Size:{' '}
+              <span className="text-gray-600 dark:text-gray-400 font-normal">
+                {selectedSize || 'Select'}
+              </span>
             </h3>
             <div className="flex gap-3 flex-wrap">
-              {SIZES.map((size) => {
+              {SIZES.map(size => {
                 const isAvailable = selectedColor
                   ? availableSizes.includes(size)
-                  : product.variants.some((v) => v.size === size && v.stockQuantity > 0)
+                  : product.variants.some(v => v.size === size && v.stockQuantity > 0)
                 const isSelected = selectedSize === size
-                
+
                 return (
                   <button
                     key={size}
@@ -281,8 +293,8 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
                       isSelected
                         ? 'bg-yametee-red text-white border-yametee-red shadow-lg shadow-yametee-red/50'
                         : isAvailable
-                        ? 'bg-gray-100 dark:bg-yametee-gray text-gray-900 dark:text-white border-gray-300 dark:border-yametee-lightGray hover:border-yametee-red/50 hover:bg-gray-200 dark:hover:bg-yametee-lightGray'
-                        : 'bg-gray-50 dark:bg-yametee-dark text-gray-400 dark:text-gray-500 border-gray-200 dark:border-yametee-gray cursor-not-allowed opacity-50'
+                          ? 'bg-gray-100 dark:bg-yametee-gray text-gray-900 dark:text-white border-gray-300 dark:border-yametee-lightGray hover:border-yametee-red/50 hover:bg-gray-200 dark:hover:bg-yametee-lightGray'
+                          : 'bg-gray-50 dark:bg-yametee-dark text-gray-400 dark:text-gray-500 border-gray-200 dark:border-yametee-gray cursor-not-allowed opacity-50'
                     }`}
                   >
                     {size}
@@ -290,7 +302,10 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
                 )
               })}
             </div>
-            <Link href="/size-guide" className="text-sm text-gray-600 dark:text-gray-400 hover:text-yametee-red mt-2 inline-block">
+            <Link
+              href="/size-guide"
+              className="text-sm text-gray-600 dark:text-gray-400 hover:text-yametee-red mt-2 inline-block"
+            >
               Size Guide
             </Link>
           </div>
@@ -298,7 +313,9 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
           {/* Quantity */}
           {selectedVariant && selectedVariant.stockQuantity > 0 && (
             <div>
-              <label className="block text-gray-900 dark:text-white mb-2 font-semibold">Quantity</label>
+              <label className="block text-gray-900 dark:text-white mb-2 font-semibold">
+                Quantity
+              </label>
               <div className="flex items-center gap-4 w-fit">
                 <button
                   onClick={() => setQuantity(Math.max(1, quantity - 1))}
@@ -310,9 +327,7 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
                   {quantity}
                 </span>
                 <button
-                  onClick={() =>
-                    setQuantity(Math.min(selectedVariant.stockQuantity, quantity + 1))
-                  }
+                  onClick={() => setQuantity(Math.min(selectedVariant.stockQuantity, quantity + 1))}
                   className="w-12 h-12 bg-gray-100 dark:bg-yametee-gray hover:bg-gray-200 dark:hover:bg-yametee-lightGray text-gray-900 dark:text-white rounded-lg font-bold transition-all border border-gray-300 dark:border-yametee-lightGray"
                 >
                   +
@@ -323,33 +338,39 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
 
           {/* Action Buttons */}
           <div className="flex gap-4 pt-4">
-            <button
+            <Button
               onClick={handleAddToCart}
-              disabled={!selectedVariant || selectedVariant.stockQuantity === 0}
-              className="flex-1 bg-yametee-red text-white py-4 rounded-lg font-semibold text-lg hover:bg-yametee-red/90 transition-all disabled:bg-yametee-gray disabled:text-gray-500 disabled:cursor-not-allowed hover:scale-105 hover:shadow-lg hover:shadow-yametee-red/50 flex items-center justify-center gap-2"
+              disabled={
+                !selectedVariant || selectedVariant.stockQuantity === 0 || addToCart.isPending
+              }
+              variant="default"
+              size="lg"
+              className="flex-1 w-full"
             >
-              <span>Add to Cart</span>
-            </button>
-            <button
+              {addToCart.isPending ? 'Adding...' : 'Add to Cart'}
+            </Button>
+            <Button
               onClick={() => setIsWishlisted(!isWishlisted)}
-              className={`w-14 h-14 rounded-lg border-2 flex items-center justify-center transition-all ${
-                isWishlisted
-                  ? 'bg-yametee-red border-yametee-red text-white'
-                  : 'bg-gray-100 dark:bg-yametee-gray border-gray-300 dark:border-yametee-lightGray text-gray-900 dark:text-white hover:border-yametee-red'
-              }`}
+              variant={isWishlisted ? 'default' : 'outline'}
+              size="lg"
+              className="w-14 h-14 p-0"
+              aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
             >
               {isWishlisted ? (
-                <HeartSolidIcon className="w-6 h-6" />
+                <HeartSolidIcon className="w-6 h-6" aria-hidden="true" />
               ) : (
-                <HeartIcon className="w-6 h-6" />
+                <HeartIcon className="w-6 h-6" aria-hidden="true" />
               )}
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={handleShare}
-              className="w-14 h-14 bg-gray-100 dark:bg-yametee-gray border-2 border-gray-300 dark:border-yametee-lightGray text-gray-900 dark:text-white rounded-lg flex items-center justify-center hover:border-yametee-red transition-all"
+              variant="outline"
+              size="lg"
+              className="w-14 h-14 p-0"
+              aria-label="Share product"
             >
-              <ShareIcon className="w-6 h-6" />
-            </button>
+              <ShareIcon className="w-6 h-6" aria-hidden="true" />
+            </Button>
           </div>
 
           {/* Product Features */}
@@ -374,10 +395,12 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
           {/* Description */}
           {product.description && (
             <div className="pt-6 border-t border-gray-200 dark:border-yametee-lightGray">
-              <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Product Details</h3>
+              <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+                Product Details
+              </h3>
               <div
                 className="text-gray-700 dark:text-gray-300 prose prose-invert dark:prose-invert max-w-none prose-headings:text-gray-900 dark:prose-headings:text-white prose-p:text-gray-700 dark:prose-p:text-gray-300 prose-strong:text-gray-900 dark:prose-strong:text-white"
-                dangerouslySetInnerHTML={{ __html: product.description }}
+                dangerouslySetInnerHTML={sanitizeHtmlForReact(product.description)}
               />
             </div>
           )}
@@ -386,7 +409,9 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
           <div className="pt-6 border-t border-gray-200 dark:border-yametee-lightGray space-y-3">
             <div className="flex justify-between">
               <span className="text-gray-600 dark:text-gray-400">SKU</span>
-              <span className="text-gray-900 dark:text-white font-semibold">{selectedVariant?.sku || 'N/A'}</span>
+              <span className="text-gray-900 dark:text-white font-semibold">
+                {selectedVariant?.sku || 'N/A'}
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600 dark:text-gray-400">Material</span>
@@ -402,3 +427,5 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
     </div>
   )
 }
+
+export default memo(ProductDetailClient)

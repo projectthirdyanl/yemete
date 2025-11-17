@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getAdminSession } from '@/lib/server-admin-session'
+import type { ProductImageInput, VariantInput } from '@yametee/types'
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getAdminSession()
@@ -12,9 +13,11 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const { id } = await params
+
     // Check if product exists
     const product = await prisma.product.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         orderItems: {
           include: {
@@ -33,28 +36,27 @@ export async function DELETE(
     }
 
     // Check if product has non-cancelled orders
-    const activeOrders = product.orderItems.filter(
-      (item) => item.order.status !== 'CANCELLED'
-    )
+    const activeOrders = product.orderItems.filter(item => item.order.status !== 'CANCELLED')
 
     if (activeOrders.length > 0) {
       return NextResponse.json(
-        { error: 'Cannot delete product with active orders. Please cancel or complete orders first.' },
+        {
+          error:
+            'Cannot delete product with active orders. Please cancel or complete orders first.',
+        },
         { status: 400 }
       )
     }
 
     // Get order items from cancelled orders that reference this product
-    const cancelledOrderItems = product.orderItems.filter(
-      (item) => item.order.status === 'CANCELLED'
-    )
+    const cancelledOrderItems = product.orderItems.filter(item => item.order.status === 'CANCELLED')
 
     // Delete order items from cancelled orders first to remove foreign key constraints
     if (cancelledOrderItems.length > 0) {
       await prisma.orderItem.deleteMany({
         where: {
           id: {
-            in: cancelledOrderItems.map((item) => item.id),
+            in: cancelledOrderItems.map(item => item.id),
           },
         },
       })
@@ -62,29 +64,25 @@ export async function DELETE(
 
     // Now delete the product (cascades to images and variants)
     await prisma.product.delete({
-      where: { id: params.id },
+      where: { id },
     })
 
     return NextResponse.json({ success: true })
-  } catch (error: any) {
+  } catch (error) {
     console.error('Delete product error:', error)
-    return NextResponse.json(
-      { error: error.message || 'Failed to delete product' },
-      { status: 500 }
-    )
+    const errorMessage = error instanceof Error ? error.message : 'Failed to delete product'
+    return NextResponse.json({ error: errorMessage }, { status: 500 })
   }
 }
 
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await getAdminSession()
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const { id } = await params
     const body = await request.json()
     const {
       name,
@@ -100,7 +98,7 @@ export async function PUT(
 
     // Check if product exists
     const existing = await prisma.product.findUnique({
-      where: { id: params.id },
+      where: { id },
     })
 
     if (!existing) {
@@ -124,11 +122,11 @@ export async function PUT(
       typeof isStandard === 'boolean'
         ? isStandard
         : existing.isStandard !== undefined
-        ? existing.isStandard
-        : true
+          ? existing.isStandard
+          : true
 
     await prisma.product.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         name,
         slug,
@@ -142,7 +140,7 @@ export async function PUT(
 
     // Get existing variants to check which ones are used in orders
     const existingVariants = await prisma.variant.findMany({
-      where: { productId: params.id },
+      where: { productId: id },
       include: {
         orderItems: {
           include: {
@@ -157,15 +155,15 @@ export async function PUT(
     })
 
     // Create a map of existing variants by size-color combination
-    const existingVariantMap = new Map<string, typeof existingVariants[0]>()
-    existingVariants.forEach((v) => {
+    const existingVariantMap = new Map<string, (typeof existingVariants)[0]>()
+    existingVariants.forEach(v => {
       const key = `${v.size}-${v.color}`
       existingVariantMap.set(key, v)
     })
 
     // Create a map of new variants by size-color combination
-    const newVariantMap = new Map<string, any>()
-    variants.forEach((v: any) => {
+    const newVariantMap = new Map<string, VariantInput>()
+    variants.forEach((v: VariantInput) => {
       const key = `${v.size}-${v.color}`
       newVariantMap.set(key, v)
     })
@@ -177,25 +175,27 @@ export async function PUT(
 
       if (existingVariant) {
         // Update existing variant (preserve ID for foreign key relationships)
+        const price = typeof variant.price === 'string' ? parseFloat(variant.price) : variant.price
         await prisma.variant.update({
           where: { id: existingVariant.id },
           data: {
             sku: variant.sku,
-            price: parseFloat(variant.price),
-            stockQuantity: parseInt(variant.stockQuantity) || 0,
+            price,
+            stockQuantity: variant.stockQuantity,
             // Note: We don't update size/color as they're part of the unique constraint
           },
         })
       } else {
         // Create new variant
+        const price = typeof variant.price === 'string' ? parseFloat(variant.price) : variant.price
         await prisma.variant.create({
           data: {
-            productId: params.id,
+            productId: id,
             sku: variant.sku,
             size: variant.size,
             color: variant.color,
-            price: parseFloat(variant.price),
-            stockQuantity: parseInt(variant.stockQuantity) || 0,
+            price,
+            stockQuantity: variant.stockQuantity,
           },
         })
       }
@@ -206,9 +206,9 @@ export async function PUT(
       const key = `${existingVariant.size}-${existingVariant.color}`
       // Check if variant is used in non-cancelled orders
       const activeOrderItems = existingVariant.orderItems.filter(
-        (item) => item.order.status !== 'CANCELLED'
+        item => item.order.status !== 'CANCELLED'
       )
-      
+
       if (!newVariantMap.has(key) && activeOrderItems.length === 0) {
         // Only delete if not referenced by any active orders
         await prisma.variant.delete({
@@ -219,12 +219,12 @@ export async function PUT(
 
     // Handle images - delete and recreate (images don't have foreign key constraints)
     await prisma.productImage.deleteMany({
-      where: { productId: params.id },
+      where: { productId: id },
     })
 
     await prisma.productImage.createMany({
-      data: images.map((img: any, index: number) => ({
-        productId: params.id,
+      data: images.map((img: ProductImageInput, index: number) => ({
+        productId: id,
         imageUrl: img.imageUrl,
         color: img.color || null,
         isPrimary: img.isPrimary || index === 0,
@@ -233,7 +233,7 @@ export async function PUT(
     })
 
     const product = await prisma.product.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         images: true,
         variants: true,
@@ -241,11 +241,9 @@ export async function PUT(
     })
 
     return NextResponse.json({ product })
-  } catch (error: any) {
+  } catch (error) {
     console.error('Update product error:', error)
-    return NextResponse.json(
-      { error: error.message || 'Failed to update product' },
-      { status: 500 }
-    )
+    const errorMessage = error instanceof Error ? error.message : 'Failed to update product'
+    return NextResponse.json({ error: errorMessage }, { status: 500 })
   }
 }

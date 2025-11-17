@@ -44,8 +44,9 @@ function formatCurrency(amount: number) {
   }).format(amount)
 }
 
-export default async function OrderDetailPage({ params }: { params: { id: string } }) {
-  const order = await getOrder(params.id)
+export default async function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
+  const order = await getOrder(id)
 
   if (!order) {
     notFound()
@@ -66,7 +67,13 @@ export default async function OrderDetailPage({ params }: { params: { id: string
         </div>
 
         {/* Order Status Update */}
-        <OrderStatusUpdate order={order} />
+        <OrderStatusUpdate
+          order={{
+            id: order.id,
+            status: order.status,
+            paymentStatus: order.paymentStatus,
+          }}
+        />
 
         {/* Order Details Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -78,7 +85,7 @@ export default async function OrderDetailPage({ params }: { params: { id: string
                 <h2 className="text-xl font-bold text-gray-900 dark:text-white">Order Items</h2>
               </div>
               <div className="divide-y divide-gray-200 dark:divide-gray-700">
-                {order.items.map((item) => (
+                {order.items.map(item => (
                   <div key={item.id} className="p-6 flex gap-4">
                     {item.product.images[0] && (
                       <img
@@ -115,7 +122,7 @@ export default async function OrderDetailPage({ params }: { params: { id: string
                   </h2>
                 </div>
                 <div className="p-6 space-y-4">
-                  {order.payments.map((payment) => (
+                  {order.payments.map(payment => (
                     <div key={payment.id} className="flex justify-between items-center">
                       <div>
                         <p className="font-medium text-gray-900 dark:text-white">

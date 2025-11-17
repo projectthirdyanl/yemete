@@ -21,17 +21,23 @@ export async function POST(request: NextRequest) {
 
     // If no admin exists and email looks like admin, auto-create
     if (adminCount === 0 && (email.includes('admin') || email === 'admin@yametee.com')) {
-      console.log('No admin users found. Creating first admin user...')
+      if (process.env.NODE_ENV === 'development') {
+        console.log('No admin users found. Creating first admin user...')
+      }
       await createAdminUser(email, password)
     }
 
     const customer = await verifyAdmin(email, password)
 
     if (!customer) {
-      return NextResponse.json({ 
-        error: 'Invalid credentials. If this is your first login, make sure you use a valid email and password.',
-        hint: 'You can create an admin user by calling POST /api/admin/init'
-      }, { status: 401 })
+      return NextResponse.json(
+        {
+          error:
+            'Invalid credentials. If this is your first login, make sure you use a valid email and password.',
+          hint: 'You can create an admin user by calling POST /api/admin/init',
+        },
+        { status: 401 }
+      )
     }
 
     const token = await createAdminSessionToken({
@@ -49,11 +55,9 @@ export async function POST(request: NextRequest) {
 
     response.cookies.set(createAdminSessionCookie(token))
     return response
-  } catch (error: any) {
+  } catch (error) {
     console.error('Login error:', error)
-    return NextResponse.json(
-      { error: error.message || 'Login failed' },
-      { status: 500 }
-    )
+    const errorMessage = error instanceof Error ? error.message : 'Login failed'
+    return NextResponse.json({ error: errorMessage }, { status: 500 })
   }
 }

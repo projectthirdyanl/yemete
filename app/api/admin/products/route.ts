@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getAdminSession } from '@/lib/server-admin-session'
+import type {
+  ApiResponse,
+  CreateProductRequest,
+  ProductResponse,
+  ProductImageInput,
+  VariantInput,
+} from '@yametee/types'
 
 export async function POST(request: NextRequest) {
   try {
@@ -9,7 +16,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const body = await request.json()
+    const body: CreateProductRequest = await request.json()
     const {
       name,
       slug,
@@ -28,7 +35,11 @@ export async function POST(request: NextRequest) {
     })
 
     if (existing) {
-      return NextResponse.json({ error: 'Slug already exists' }, { status: 400 })
+      const errorResponse: ApiResponse<null> = {
+        success: false,
+        error: 'Slug already exists',
+      }
+      return NextResponse.json(errorResponse, { status: 400 })
     }
 
     // Create product with variants and images
@@ -42,7 +53,7 @@ export async function POST(request: NextRequest) {
         isDrop,
         isStandard,
         images: {
-          create: images.map((img: any, index: number) => ({
+          create: images.map((img: ProductImageInput, index: number) => ({
             imageUrl: img.imageUrl,
             color: img.color || null,
             isPrimary: img.isPrimary || index === 0,
@@ -50,23 +61,48 @@ export async function POST(request: NextRequest) {
           })),
         },
         variants: {
-          create: variants.map((variant: any) => ({
+          create: variants.map((variant: VariantInput) => ({
             sku: variant.sku,
             size: variant.size,
             color: variant.color,
-            price: parseFloat(variant.price),
-            stockQuantity: parseInt(variant.stockQuantity) || 0,
+            price: typeof variant.price === 'string' ? parseFloat(variant.price) : variant.price,
+            stockQuantity: variant.stockQuantity,
           })),
         },
       },
     })
 
-    return NextResponse.json({ product })
-  } catch (error: any) {
+    // Transform Prisma product to API response format
+    const productResponse: ProductResponse = {
+      id: product.id,
+      slug: product.slug,
+      name: product.name,
+      description: product.description,
+      brand: product.brand,
+      status: product.status,
+      isFeatured: product.isFeatured,
+      isDrop: product.isDrop,
+      isStandard: product.isStandard,
+      createdAt: product.createdAt.toISOString(),
+      updatedAt: product.updatedAt.toISOString(),
+      images: [],
+      variants: [],
+    }
+
+    const apiResponse: ApiResponse<ProductResponse> = {
+      success: true,
+      data: productResponse,
+      message: 'Product created successfully',
+    }
+
+    return NextResponse.json(apiResponse)
+  } catch (error) {
     console.error('Create product error:', error)
-    return NextResponse.json(
-      { error: error.message || 'Failed to create product' },
-      { status: 500 }
-    )
+    const errorMessage = error instanceof Error ? error.message : 'Failed to create product'
+    const errorResponse: ApiResponse<null> = {
+      success: false,
+      error: errorMessage,
+    }
+    return NextResponse.json(errorResponse, { status: 500 })
   }
 }

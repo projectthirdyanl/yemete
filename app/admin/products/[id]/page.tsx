@@ -21,8 +21,9 @@ async function getProduct(id: string) {
   }
 }
 
-export default async function EditProductPage({ params }: { params: { id: string } }) {
-  const product = await getProduct(params.id)
+export default async function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
+  const product = await getProduct(id)
 
   if (!product) {
     notFound()
@@ -31,7 +32,7 @@ export default async function EditProductPage({ params }: { params: { id: string
   // Transform product to match ProductForm's expected types (convert Decimal to string)
   const transformedProduct = {
     ...product,
-    variants: product.variants.map((variant) => ({
+    variants: product.variants.map(variant => ({
       ...variant,
       price: variant.price.toString(),
     })),

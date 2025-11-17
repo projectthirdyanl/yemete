@@ -47,15 +47,16 @@ function formatCurrency(amount: number) {
   }).format(amount)
 }
 
-export default async function CustomerDetailPage({ params }: { params: { id: string } }) {
-  const customer = await getCustomer(params.id)
+export default async function CustomerDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
+  const customer = await getCustomer(id)
 
   if (!customer) {
     notFound()
   }
 
   const totalSpent = customer.orders
-    .filter((o) => o.status === 'COMPLETED')
+    .filter(o => o.status === 'COMPLETED')
     .reduce((sum, o) => sum + Number(o.grandTotal), 0)
 
   return (
@@ -132,7 +133,7 @@ export default async function CustomerDetailPage({ params }: { params: { id: str
                   <h2 className="text-xl font-bold text-gray-900 dark:text-white">Addresses</h2>
                 </div>
                 <div className="p-6 space-y-4">
-                  {customer.addresses.map((address) => (
+                  {customer.addresses.map(address => (
                     <div key={address.id} className="text-sm text-gray-600 dark:text-gray-400">
                       <p className="font-medium text-gray-900 dark:text-white">
                         {address.fullName}
@@ -187,7 +188,7 @@ export default async function CustomerDetailPage({ params }: { params: { id: str
                       </tr>
                     </thead>
                     <tbody>
-                      {customer.orders.map((order) => (
+                      {customer.orders.map(order => (
                         <tr
                           key={order.id}
                           className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-yametee-dark/50 transition-colors"
@@ -215,12 +216,12 @@ export default async function CustomerDetailPage({ params }: { params: { id: str
                                 order.status === 'COMPLETED'
                                   ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
                                   : order.status === 'PENDING'
-                                  ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400'
-                                  : order.status === 'SHIPPED'
-                                  ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
-                                  : order.status === 'CANCELLED'
-                                  ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
-                                  : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-400'
+                                    ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400'
+                                    : order.status === 'SHIPPED'
+                                      ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
+                                      : order.status === 'CANCELLED'
+                                        ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
+                                        : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-400'
                               }`}
                             >
                               {order.status}

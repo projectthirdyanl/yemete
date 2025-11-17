@@ -15,9 +15,17 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '50')
     const skip = (page - 1) * limit
 
-    const where: any = {}
+    const where: {
+      status?: 'PENDING' | 'PAID' | 'PROCESSING' | 'SHIPPED' | 'COMPLETED' | 'CANCELLED'
+    } = {}
     if (status && status !== 'ALL') {
-      where.status = status
+      where.status = status as
+        | 'PENDING'
+        | 'PAID'
+        | 'PROCESSING'
+        | 'SHIPPED'
+        | 'COMPLETED'
+        | 'CANCELLED'
     }
 
     const [orders, total] = await Promise.all([

@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getCartSessionId, getOrCreateCart } from '@/lib/cart'
+import type {
+  ApiResponse,
+  CartResponse,
+  AddToCartRequest,
+  UpdateCartItemRequest,
+  CartItemResponse,
+} from '@yametee/types'
 
 /**
  * GET /api/cart
@@ -9,12 +16,12 @@ import { getCartSessionId, getOrCreateCart } from '@/lib/cart'
 export async function GET(request: NextRequest) {
   try {
     const sessionId = await getCartSessionId()
-    
+
     // For now, we only support guest carts (session-based)
     // In the future, we can add customerId from auth token
     const cart = await getOrCreateCart(sessionId)
 
-    const cartItems = cart.items.map((item) => ({
+    const cartItems = cart.items.map(item => ({
       id: item.id,
       productId: item.productId,
       variantId: item.variantId,
@@ -27,18 +34,25 @@ export async function GET(request: NextRequest) {
       stockQuantity: item.variant.stockQuantity,
     }))
 
-    const response = NextResponse.json({
+    const responseData: CartResponse = {
       items: cartItems,
       itemCount: cartItems.reduce((sum, item) => sum + item.quantity, 0),
-    })
-    
-    return response
-  } catch (error: any) {
+    }
+
+    const apiResponse: ApiResponse<CartResponse> = {
+      success: true,
+      data: responseData,
+    }
+
+    return NextResponse.json(apiResponse)
+  } catch (error) {
     console.error('Get cart error:', error)
-    return NextResponse.json(
-      { error: error.message || 'Failed to get cart' },
-      { status: 500 }
-    )
+    const errorMessage = error instanceof Error ? error.message : 'Failed to get cart'
+    const errorResponse: ApiResponse<null> = {
+      success: false,
+      error: errorMessage,
+    }
+    return NextResponse.json(errorResponse, { status: 500 })
   }
 }
 
@@ -48,7 +62,7 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
+    const body: AddToCartRequest = await request.json()
     const { variantId, quantity } = body
 
     if (!variantId || !quantity || quantity <= 0) {
@@ -74,10 +88,7 @@ export async function POST(request: NextRequest) {
     })
 
     if (!variant) {
-      return NextResponse.json(
-        { error: 'Variant not found' },
-        { status: 404 }
-      )
+      return NextResponse.json({ error: 'Variant not found' }, { status: 404 })
     }
 
     if (variant.stockQuantity < quantity) {
@@ -130,7 +141,7 @@ export async function POST(request: NextRequest) {
 
     // Return updated cart
     const updatedCart = await getOrCreateCart(sessionId)
-    const cartItems = updatedCart.items.map((item) => ({
+    const cartItems: CartItemResponse[] = updatedCart.items.map(item => ({
       id: item.id,
       productId: item.productId,
       variantId: item.variantId,
@@ -143,19 +154,25 @@ export async function POST(request: NextRequest) {
       stockQuantity: item.variant.stockQuantity,
     }))
 
-    const response = NextResponse.json({
-      success: true,
+    const responseData: CartResponse = {
       items: cartItems,
       itemCount: cartItems.reduce((sum, item) => sum + item.quantity, 0),
-    })
-    
-    return response
-  } catch (error: any) {
+    }
+
+    const apiResponse: ApiResponse<CartResponse> = {
+      success: true,
+      data: responseData,
+    }
+
+    return NextResponse.json(apiResponse)
+  } catch (error) {
     console.error('Add to cart error:', error)
-    return NextResponse.json(
-      { error: error.message || 'Failed to add to cart' },
-      { status: 500 }
-    )
+    const errorMessage = error instanceof Error ? error.message : 'Failed to add to cart'
+    const errorResponse: ApiResponse<null> = {
+      success: false,
+      error: errorMessage,
+    }
+    return NextResponse.json(errorResponse, { status: 500 })
   }
 }
 
@@ -165,14 +182,11 @@ export async function POST(request: NextRequest) {
  */
 export async function PUT(request: NextRequest) {
   try {
-    const body = await request.json()
+    const body: UpdateCartItemRequest = await request.json()
     const { itemId, quantity } = body
 
     if (!itemId || quantity === undefined) {
-      return NextResponse.json(
-        { error: 'Item ID and quantity are required' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Item ID and quantity are required' }, { status: 400 })
     }
 
     if (quantity <= 0) {
@@ -183,7 +197,7 @@ export async function PUT(request: NextRequest) {
 
       const sessionId = await getCartSessionId()
       const cart = await getOrCreateCart(sessionId)
-      const cartItems = cart.items.map((item) => ({
+      const cartItems = cart.items.map(item => ({
         id: item.id,
         productId: item.productId,
         variantId: item.variantId,
@@ -196,13 +210,17 @@ export async function PUT(request: NextRequest) {
         stockQuantity: item.variant.stockQuantity,
       }))
 
-      const response = NextResponse.json({
-        success: true,
+      const responseData: CartResponse = {
         items: cartItems,
         itemCount: cartItems.reduce((sum, item) => sum + item.quantity, 0),
-      })
-      
-      return response
+      }
+
+      const apiResponse: ApiResponse<CartResponse> = {
+        success: true,
+        data: responseData,
+      }
+
+      return NextResponse.json(apiResponse)
     }
 
     // Get cart item to check stock
@@ -212,10 +230,7 @@ export async function PUT(request: NextRequest) {
     })
 
     if (!cartItem) {
-      return NextResponse.json(
-        { error: 'Cart item not found' },
-        { status: 404 }
-      )
+      return NextResponse.json({ error: 'Cart item not found' }, { status: 404 })
     }
 
     // Check stock availability
@@ -235,7 +250,7 @@ export async function PUT(request: NextRequest) {
     // Return updated cart
     const sessionId = await getCartSessionId()
     const cart = await getOrCreateCart(sessionId)
-    const cartItems = cart.items.map((item) => ({
+    const cartItems = cart.items.map(item => ({
       id: item.id,
       productId: item.productId,
       variantId: item.variantId,
@@ -248,18 +263,24 @@ export async function PUT(request: NextRequest) {
       stockQuantity: item.variant.stockQuantity,
     }))
 
-    const response = NextResponse.json({
-      success: true,
+    const responseData: CartResponse = {
       items: cartItems,
       itemCount: cartItems.reduce((sum, item) => sum + item.quantity, 0),
-    })
-    
-    return response
-  } catch (error: any) {
+    }
+
+    const apiResponse: ApiResponse<CartResponse> = {
+      success: true,
+      data: responseData,
+    }
+
+    return NextResponse.json(apiResponse)
+  } catch (error) {
     console.error('Update cart error:', error)
-    return NextResponse.json(
-      { error: error.message || 'Failed to update cart' },
-      { status: 500 }
-    )
+    const errorMessage = error instanceof Error ? error.message : 'Failed to update cart'
+    const errorResponse: ApiResponse<null> = {
+      success: false,
+      error: errorMessage,
+    }
+    return NextResponse.json(errorResponse, { status: 500 })
   }
 }

@@ -40,31 +40,66 @@ function getPaymentMethodTypes(paymentMethod?: PaymentMethod): string[] {
 export async function createPayMongoCheckout(
   session: PayMongoCheckoutSession
 ): Promise<PayMongoResponse> {
-  const { paymentMethod, ...sessionData } = session
+  const { paymentMethod, metadata, ...sessionData } = session
   const payment_method_types = getPaymentMethodTypes(paymentMethod)
+
+  // PayMongo checkout sessions don't support metadata directly
+  // We'll include it in the description or omit it
+  const requestBody: {
+    data: {
+      attributes: {
+        amount: number
+        description: string
+        success_url: string
+        failed_url: string
+        payment_method_types: string[]
+      }
+    }
+  } = {
+    data: {
+      attributes: {
+        ...sessionData,
+        payment_method_types,
+      },
+    },
+  }
 
   const response = await fetch('https://api.paymongo.com/v1/checkout_sessions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Basic ${Buffer.from(PAYMONGO_SECRET_KEY + ':').toString('base64')}`,
+      Authorization: `Basic ${Buffer.from(PAYMONGO_SECRET_KEY + ':').toString('base64')}`,
     },
-    body: JSON.stringify({
-      data: {
-        attributes: {
-          ...sessionData,
-          payment_method_types,
-        },
-      },
-    }),
+    body: JSON.stringify(requestBody),
   })
 
   if (!response.ok) {
-    const error = await response.text()
-    throw new Error(`PayMongo API error: ${error}`)
+    let errorMessage = 'Unknown error'
+    try {
+      const errorData = await response.json()
+      errorMessage = errorData?.errors?.[0]?.detail || JSON.stringify(errorData)
+    } catch {
+      const errorText = await response.text()
+      errorMessage = errorText || `HTTP ${response.status}: ${response.statusText}`
+    }
+    console.error('PayMongo API error details:', {
+      status: response.status,
+      statusText: response.statusText,
+      error: errorMessage,
+      requestBody: JSON.stringify(requestBody, null, 2),
+    })
+    throw new Error(`PayMongo API error: ${errorMessage}`)
   }
 
-  return response.json()
+  const result = await response.json()
+
+  // Validate response structure
+  if (!result?.data?.attributes?.checkout_url) {
+    console.error('Invalid PayMongo response structure:', JSON.stringify(result, null, 2))
+    throw new Error('PayMongo returned invalid response structure')
+  }
+
+  return result
 }
 
 export function verifyWebhookSignature(
@@ -79,13 +114,13 @@ export function verifyWebhookSignature(
   if (!secret) {
     return false
   }
-  
+
   // Basic check - in production, implement proper HMAC verification
   // const crypto = require('crypto')
   // const hmac = crypto.createHmac('sha256', secret)
   // hmac.update(payload)
   // const expectedSignature = hmac.digest('hex')
   // return signature.includes(expectedSignature)
-  
+
   return true // For now, accept if secret is configured
 }

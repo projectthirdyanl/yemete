@@ -7,10 +7,7 @@ export async function POST(request: NextRequest) {
     const { email, password, name } = body
 
     if (!email || !password) {
-      return NextResponse.json(
-        { error: 'Email and password required' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Email and password required' }, { status: 400 })
     }
 
     const admin = await createAdminUser(email, password)
@@ -24,11 +21,9 @@ export async function POST(request: NextRequest) {
         name: admin.name,
       },
     })
-  } catch (error: any) {
+  } catch (error) {
     console.error('Init admin error:', error)
-    return NextResponse.json(
-      { error: error.message || 'Failed to create admin user' },
-      { status: 500 }
-    )
+    const errorMessage = error instanceof Error ? error.message : 'Failed to create admin user'
+    return NextResponse.json({ error: errorMessage }, { status: 500 })
   }
 }

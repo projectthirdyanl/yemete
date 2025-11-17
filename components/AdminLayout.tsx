@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
+import LoadingSpinner from '@/components/LoadingSpinner'
 
 const navigation = [
   { name: 'Dashboard', href: '/admin', icon: '📊' },
@@ -10,6 +11,7 @@ const navigation = [
   { name: 'Products', href: '/admin/products', icon: '👕' },
   { name: 'Customers', href: '/admin/customers', icon: '👥' },
   { name: 'Inventory', href: '/admin/inventory', icon: '📊' },
+  { name: 'Admin Accounts', href: '/admin/accounts', icon: '👤' },
 ]
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -18,7 +20,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [mounted, setMounted] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [sessionLoading, setSessionLoading] = useState(true)
-  const [session, setSession] = useState<{ name?: string | null; email?: string | null } | null>(null)
+  const [session, setSession] = useState<{ name?: string | null; email?: string | null } | null>(
+    null
+  )
   const [loggingOut, setLoggingOut] = useState(false)
 
   useEffect(() => {
@@ -37,13 +41,26 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         })
 
         if (!response.ok) {
-          throw new Error('Unauthorized')
+          // Middleware should handle redirect, but if we get here, redirect to login
+          const currentPath = window.location.pathname
+          const redirectTo = currentPath !== '/admin/login' ? currentPath : undefined
+          router.replace(
+            redirectTo
+              ? `/admin/login?redirectTo=${encodeURIComponent(redirectTo)}`
+              : '/admin/login'
+          )
+          return
         }
 
         const data = await response.json()
         setSession(data.customer)
       } catch (error) {
-        router.replace('/admin/login')
+        // Network error or other issue - middleware will handle auth
+        const currentPath = window.location.pathname
+        const redirectTo = currentPath !== '/admin/login' ? currentPath : undefined
+        router.replace(
+          redirectTo ? `/admin/login?redirectTo=${encodeURIComponent(redirectTo)}` : '/admin/login'
+        )
       } finally {
         setSessionLoading(false)
       }
@@ -74,11 +91,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   if (!mounted || sessionLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-yametee-dark">
-        <p className="text-gray-900 dark:text-white">Loading...</p>
-      </div>
-    )
+    return <LoadingSpinner fullScreen={true} size="large" message="Loading admin panel..." />
   }
 
   return (
@@ -93,11 +106,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             >
               {sidebarOpen ? (
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
                 </svg>
               ) : (
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 6h16M4 12h16M4 18h16"
+                  />
                 </svg>
               )}
             </button>
@@ -138,7 +161,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           }`}
         >
           <nav className={`p-4 space-y-2 ${sidebarOpen ? '' : 'hidden'}`}>
-            {navigation.map((item) => {
+            {navigation.map(item => {
               const isActive =
                 pathname === item.href ||
                 (item.href === '/admin' && pathname === '/admin') ||

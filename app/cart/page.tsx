@@ -1,108 +1,57 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useEffect } from 'react'
 import Link from 'next/link'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
+import LoadingSpinner from '@/components/LoadingSpinner'
 import { formatPrice } from '@/lib/utils'
-
-interface CartItem {
-  id: string
-  productId: string
-  variantId: string
-  size: string
-  color: string
-  quantity: number
-  price: number
-  productName: string
-  imageUrl: string
-  stockQuantity: number
-}
+import { useCart, useUpdateCartItem, useRemoveCartItem } from '@/hooks/useCart'
+import { useToast } from '@/contexts/ToastContext'
 
 export default function CartPage() {
-  const [cart, setCart] = useState<CartItem[]>([])
-  const [loading, setLoading] = useState(true)
+  const { data: cartData, isLoading: loading, error } = useCart()
+  const updateCartItem = useUpdateCartItem()
+  const removeCartItem = useRemoveCartItem()
+  const { error: showError } = useToast()
 
+  const cart = cartData?.data?.items || []
+
+  // Show error toast if cart has errors
   useEffect(() => {
-    const loadCart = async () => {
-      try {
-        const response = await fetch('/api/cart')
-        const data = await response.json()
-        if (response.ok) {
-          setCart(data.items || [])
-        }
-      } catch (error) {
-        console.error('Failed to load cart:', error)
-      } finally {
-        setLoading(false)
-      }
+    if (error) {
+      showError(error.message || 'Failed to load cart')
     }
+  }, [error, showError])
 
-    loadCart()
-    const handleCartUpdate = () => {
-      loadCart()
-    }
-    window.addEventListener('cartUpdated', handleCartUpdate)
-    return () => window.removeEventListener('cartUpdated', handleCartUpdate)
-  }, [])
-
-  const updateQuantity = async (itemId: string, newQuantity: number) => {
-    if (newQuantity <= 0) {
-      removeItem(itemId)
-      return
-    }
-
+  const handleUpdateQuantity = async (itemId: string, newQuantity: number) => {
     try {
-      const response = await fetch('/api/cart', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          itemId,
-          quantity: newQuantity,
-        }),
-      })
-
-      const data = await response.json()
-      if (response.ok) {
-        setCart(data.items || [])
-        window.dispatchEvent(new Event('cartUpdated'))
-      } else {
-        alert(data.error || 'Failed to update quantity')
-      }
-    } catch (error: any) {
-      alert(error.message || 'Failed to update quantity')
+      await updateCartItem.mutateAsync({ itemId, quantity: newQuantity })
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to update quantity'
+      showError(errorMessage)
     }
   }
 
-  const removeItem = async (itemId: string) => {
+  const handleRemoveItem = async (itemId: string) => {
     try {
-      const response = await fetch(`/api/cart/${itemId}`, {
-        method: 'DELETE',
-      })
-
-      const data = await response.json()
-      if (response.ok) {
-        setCart(data.items || [])
-        window.dispatchEvent(new Event('cartUpdated'))
-      } else {
-        alert(data.error || 'Failed to remove item')
-      }
-    } catch (error: any) {
-      alert(error.message || 'Failed to remove item')
+      await removeCartItem.mutateAsync(itemId)
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to remove item'
+      showError(errorMessage)
     }
   }
 
-  const subtotal = cart.reduce(
-    (sum, item) => sum + item.price * item.quantity,
-    0
-  )
+  const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0)
   const shippingFee = subtotal > 0 ? 100 : 0
   const grandTotal = subtotal + shippingFee
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-gray-900 dark:text-white">Loading...</p>
+      <div className="min-h-screen flex flex-col">
+        <Header />
+        <LoadingSpinner fullScreen={false} message="Loading your cart..." />
+        <Footer />
       </div>
     )
   }
@@ -110,7 +59,7 @@ export default function CartPage() {
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
-      
+
       <main className="flex-1 py-12 px-4">
         <div className="container mx-auto max-w-4xl">
           <h1 className="text-4xl font-bold mb-8 text-gray-900 dark:text-white">Shopping Cart</h1>
@@ -128,7 +77,7 @@ export default function CartPage() {
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               <div className="lg:col-span-2 space-y-4">
-                {cart.map((item) => (
+                {cart.map(item => (
                   <div
                     key={item.id}
                     className="bg-white dark:bg-yametee-gray border border-gray-200 dark:border-gray-700 rounded-lg p-4 flex gap-4"
@@ -155,8 +104,8 @@ export default function CartPage() {
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <button
-                            onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                            disabled={item.quantity <= 1}
+                            onClick={() => handleUpdateQuantity(item.id, item.quantity - 1)}
+                            disabled={item.quantity <= 1 || updateCartItem.isPending}
                             className="w-8 h-8 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white rounded hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             -
@@ -165,8 +114,10 @@ export default function CartPage() {
                             {item.quantity}
                           </span>
                           <button
-                            onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                            disabled={item.quantity >= item.stockQuantity}
+                            onClick={() => handleUpdateQuantity(item.id, item.quantity + 1)}
+                            disabled={
+                              item.quantity >= item.stockQuantity || updateCartItem.isPending
+                            }
                             className="w-8 h-8 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white rounded hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             +
@@ -177,10 +128,11 @@ export default function CartPage() {
                             {formatPrice(item.price * item.quantity)}
                           </p>
                           <button
-                            onClick={() => removeItem(item.id)}
-                            className="text-gray-600 dark:text-gray-400 hover:text-yametee-red transition-colors"
+                            onClick={() => handleRemoveItem(item.id)}
+                            disabled={removeCartItem.isPending}
+                            className="text-gray-600 dark:text-gray-400 hover:text-yametee-red transition-colors disabled:opacity-50"
                           >
-                            Remove
+                            {removeCartItem.isPending ? 'Removing...' : 'Remove'}
                           </button>
                         </div>
                       </div>
@@ -191,7 +143,9 @@ export default function CartPage() {
 
               <div className="lg:col-span-1">
                 <div className="bg-white dark:bg-yametee-gray border border-gray-200 dark:border-gray-700 rounded-lg p-6 sticky top-24">
-                  <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Order Summary</h2>
+                  <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+                    Order Summary
+                  </h2>
                   <div className="space-y-2 mb-4">
                     <div className="flex justify-between text-gray-700 dark:text-gray-300">
                       <span>Subtotal</span>

@@ -4,9 +4,17 @@ import Link from 'next/link'
 
 async function getOrders(status?: string) {
   try {
-    const where: any = {}
+    const where: {
+      status?: 'PENDING' | 'PAID' | 'PROCESSING' | 'SHIPPED' | 'COMPLETED' | 'CANCELLED'
+    } = {}
     if (status && status !== 'ALL') {
-      where.status = status
+      where.status = status as
+        | 'PENDING'
+        | 'PAID'
+        | 'PROCESSING'
+        | 'SHIPPED'
+        | 'COMPLETED'
+        | 'CANCELLED'
     }
 
     const orders = await prisma.order.findMany({
@@ -62,12 +70,12 @@ export default async function AdminOrdersPage({
 
   const statusCounts = {
     ALL: orders.length,
-    PENDING: orders.filter((o) => o.status === 'PENDING').length,
-    PAID: orders.filter((o) => o.status === 'PAID').length,
-    PROCESSING: orders.filter((o) => o.status === 'PROCESSING').length,
-    SHIPPED: orders.filter((o) => o.status === 'SHIPPED').length,
-    COMPLETED: orders.filter((o) => o.status === 'COMPLETED').length,
-    CANCELLED: orders.filter((o) => o.status === 'CANCELLED').length,
+    PENDING: orders.filter(o => o.status === 'PENDING').length,
+    PAID: orders.filter(o => o.status === 'PAID').length,
+    PROCESSING: orders.filter(o => o.status === 'PROCESSING').length,
+    SHIPPED: orders.filter(o => o.status === 'SHIPPED').length,
+    COMPLETED: orders.filter(o => o.status === 'COMPLETED').length,
+    CANCELLED: orders.filter(o => o.status === 'CANCELLED').length,
   }
 
   const currentStatus = searchParams?.status || 'ALL'
@@ -99,9 +107,7 @@ export default async function AdminOrdersPage({
         {/* Orders Table */}
         <div className="bg-white dark:bg-yametee-gray border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
           {orders.length === 0 ? (
-            <div className="p-8 text-center text-gray-600 dark:text-gray-400">
-              No orders found
-            </div>
+            <div className="p-8 text-center text-gray-600 dark:text-gray-400">No orders found</div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
@@ -134,7 +140,7 @@ export default async function AdminOrdersPage({
                   </tr>
                 </thead>
                 <tbody>
-                  {orders.map((order) => (
+                  {orders.map(order => (
                     <tr
                       key={order.id}
                       className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-yametee-dark/50 transition-colors"
@@ -169,8 +175,8 @@ export default async function AdminOrdersPage({
                             order.paymentStatus === 'PAID'
                               ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
                               : order.paymentStatus === 'PENDING'
-                              ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400'
-                              : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
+                                ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400'
+                                : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
                           }`}
                         >
                           {order.paymentStatus}
@@ -182,14 +188,14 @@ export default async function AdminOrdersPage({
                             order.status === 'COMPLETED'
                               ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
                               : order.status === 'PENDING'
-                              ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400'
-                              : order.status === 'SHIPPED'
-                              ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
-                              : order.status === 'PROCESSING'
-                              ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400'
-                              : order.status === 'CANCELLED'
-                              ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
-                              : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-400'
+                                ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400'
+                                : order.status === 'SHIPPED'
+                                  ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
+                                  : order.status === 'PROCESSING'
+                                    ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400'
+                                    : order.status === 'CANCELLED'
+                                      ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
+                                      : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-400'
                           }`}
                         >
                           {order.status}

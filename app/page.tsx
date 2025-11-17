@@ -14,13 +14,15 @@ const heroStats = [
 const capsuleHighlights = [
   {
     title: 'Drop 07 / Bloom Core',
-    description: 'Hand-sketched blossoms meet Neo-Tokyo typography. Every tee is numbered & heat-sealed.',
+    description:
+      'Hand-sketched blossoms meet Neo-Tokyo typography. Every tee is numbered & heat-sealed.',
     status: 'Ships March 01',
     tag: 'New Drop',
   },
   {
     title: 'Studio Uniform Program',
-    description: 'Daily staples in oxidized blacks + bone white. Oversized, pre-shrunk, zero crack prints.',
+    description:
+      'Daily staples in oxidized blacks + bone white. Oversized, pre-shrunk, zero crack prints.',
     status: 'Restock weekly',
     tag: 'Core',
   },
@@ -74,7 +76,8 @@ const lookbookStories = [
 const studioStories = [
   {
     title: 'Studio Log 032: Bloom Core Process',
-    summary: 'From pencil sketch to four-color pull. We break down the layering and inks we obsessed over.',
+    summary:
+      'From pencil sketch to four-color pull. We break down the layering and inks we obsessed over.',
     date: 'March 02',
   },
   {
@@ -120,7 +123,7 @@ export default async function Home() {
   return (
     <div className="min-h-screen flex flex-col bg-yametee-bg">
       <Header />
-      
+
       <main className="flex-1">
         <section className="relative overflow-hidden py-16 md:py-20 px-4">
           <div className="absolute inset-0 opacity-30 blur-3xl bg-gradient-to-br from-[#ff3b30]/20 via-transparent to-transparent pointer-events-none" />
@@ -132,8 +135,9 @@ export default async function Home() {
                   Anime energy distilled into daily uniforms for Manila streets.
                 </h1>
                 <p className="text-base md:text-lg text-yametee-muted max-w-2xl leading-relaxed">
-                  Heavyweight tees engineered for the climate: pre-shrunk, breathable, and screen printed by hand inside
-                  our Mandaluyong studio. Built to take on commutes, gigs, and midnight food runs.
+                  Heavyweight tees engineered for the climate: pre-shrunk, breathable, and screen
+                  printed by hand inside our Mandaluyong studio. Built to take on commutes, gigs,
+                  and midnight food runs.
                 </p>
                 <div className="flex flex-wrap gap-4">
                   <Link
@@ -150,13 +154,17 @@ export default async function Home() {
                   </Link>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4">
-                  {heroStats.map((stat) => (
+                  {heroStats.map(stat => (
                     <div
                       key={stat.label}
                       className="rounded-2xl border border-yametee-border bg-yametee-gray/40 p-4 text-center"
                     >
-                      <p className="text-xs uppercase tracking-[0.3em] text-yametee-muted">{stat.label}</p>
-                      <p className="font-heading text-2xl text-yametee-foreground mt-1">{stat.value}</p>
+                      <p className="text-xs uppercase tracking-[0.3em] text-yametee-muted">
+                        {stat.label}
+                      </p>
+                      <p className="font-heading text-2xl text-yametee-foreground mt-1">
+                        {stat.value}
+                      </p>
                     </div>
                   ))}
                 </div>
@@ -166,8 +174,12 @@ export default async function Home() {
                 <EmailSignup />
                 <div className="rounded-2xl border border-yametee-border bg-yametee-gray/60 p-4 flex items-center justify-between">
                   <div>
-                    <p className="text-xs uppercase tracking-[0.3em] text-yametee-muted">Same-day Metro Manila</p>
-                    <p className="text-sm text-yametee-foreground mt-1">Order by 2 PM • Grab / Lalamove ready</p>
+                    <p className="text-xs uppercase tracking-[0.3em] text-yametee-muted">
+                      Same-day Metro Manila
+                    </p>
+                    <p className="text-sm text-yametee-foreground mt-1">
+                      Order by 2 PM • Grab / Lalamove ready
+                    </p>
                   </div>
                   <span className="text-yametee-red text-xl">↻</span>
                 </div>
@@ -178,7 +190,7 @@ export default async function Home() {
 
         <section className="px-4 pb-12">
           <div className="container mx-auto grid gap-6 md:grid-cols-3">
-            {capsuleHighlights.map((capsule) => (
+            {capsuleHighlights.map(capsule => (
               <div
                 key={capsule.title}
                 className="rounded-3xl border border-yametee-border bg-[var(--yametee-card)] dark:bg-gradient-to-br dark:from-white/5 dark:to-transparent p-6 flex flex-col justify-between min-h-[220px] shadow-[0_12px_50px_rgba(0,0,0,0.05)] dark:shadow-none"
@@ -187,21 +199,29 @@ export default async function Home() {
                   {capsule.tag}
                 </p>
                 <div className="mt-3 space-y-3">
-                  <h3 className="font-heading text-2xl text-yametee-foreground dark:text-white">{capsule.title}</h3>
-                  <p className="text-sm text-yametee-muted dark:text-white/70">{capsule.description}</p>
+                  <h3 className="font-heading text-2xl text-yametee-foreground dark:text-white">
+                    {capsule.title}
+                  </h3>
+                  <p className="text-sm text-yametee-muted dark:text-white/70">
+                    {capsule.description}
+                  </p>
                 </div>
-                <p className="text-xs uppercase tracking-[0.3em] text-yametee-red mt-4">{capsule.status}</p>
+                <p className="text-xs uppercase tracking-[0.3em] text-yametee-red mt-4">
+                  {capsule.status}
+                </p>
               </div>
             ))}
           </div>
         </section>
 
         <section className="py-16 px-4">
-            <div className="container mx-auto">
+          <div className="container mx-auto">
             <div className="flex flex-wrap items-center justify-between gap-4 mb-10">
               <div>
                 <p className="text-xs uppercase tracking-[0.4em] text-yametee-muted">Featured</p>
-                <h2 className="font-heading text-3xl md:text-4xl text-yametee-foreground">Hand-numbered Drops</h2>
+                <h2 className="font-heading text-3xl md:text-4xl text-yametee-foreground">
+                  Hand-numbered Drops
+                </h2>
               </div>
               <Link
                 href="/drops"
@@ -218,10 +238,12 @@ export default async function Home() {
             ) : (
               <div className="grid gap-6 md:grid-cols-2">
                 {spotlightProducts.map((product, index) => {
-                  const variant = product.variants[0]
-                  const primaryImage = product.images[0]
-                  const secondaryImage = product.images[1]
-                  
+                  const variant = product.variants?.[0]
+                  const primaryImage = product.images?.[0]
+                  const secondaryImage = product.images?.[1]
+
+                  if (!variant) return null
+
                   return (
                     <Link
                       key={product.id}
@@ -231,16 +253,16 @@ export default async function Home() {
                       <div className="relative aspect-[4/3] overflow-hidden">
                         {primaryImage ? (
                           <>
-                          <img
-                            src={primaryImage.imageUrl}
-                            alt={`${product.name} front`}
+                            <img
+                              src={primaryImage.imageUrl}
+                              alt={`${product.name} front`}
                               className={`absolute inset-0 h-full w-full object-cover transition-all duration-300 ${
                                 secondaryImage ? 'opacity-100 group-hover:opacity-0' : 'opacity-100'
                               } group-hover:scale-105`}
-                          />
-                          {secondaryImage && (
-                            <img
-                              src={secondaryImage.imageUrl}
+                            />
+                            {secondaryImage && (
+                              <img
+                                src={secondaryImage.imageUrl}
                                 alt={`${product.name} alternate`}
                                 className="absolute inset-0 h-full w-full object-cover opacity-0 transition-all duration-300 group-hover:opacity-100 group-hover:scale-105"
                               />
@@ -261,12 +283,14 @@ export default async function Home() {
                           <p className="text-xs uppercase tracking-[0.35em] text-yametee-muted dark:text-white/60">
                             Limited run
                           </p>
-                          <h3 className="font-heading text-2xl text-yametee-foreground dark:text-white">{product.name}</h3>
+                          <h3 className="font-heading text-2xl text-yametee-foreground dark:text-white">
+                            {product.name}
+                          </h3>
                         </div>
                         {variant && (
                           <p className="text-lg font-semibold text-yametee-red">
                             {formatPrice(variant.price.toString())}
-                            </p>
+                          </p>
                         )}
                       </div>
                     </Link>
@@ -280,18 +304,22 @@ export default async function Home() {
         <section className="px-4 pb-16">
           <div className="container mx-auto">
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {collectionCards.map((collection) => (
+              {collectionCards.map(collection => (
                 <Link
                   key={collection.title}
                   href={collection.href}
                   className={`rounded-3xl border border-yametee-border bg-[var(--yametee-card)] dark:bg-gradient-to-br ${collection.accent} p-6 flex flex-col justify-between min-h-[240px] hover:-translate-y-1 transition-transform shadow-[0_12px_50px_rgba(0,0,0,0.06)] dark:shadow-none`}
                 >
                   <div>
-                    <p className="text-xs uppercase tracking-[0.4em] text-yametee-muted dark:text-white/70">Collection</p>
+                    <p className="text-xs uppercase tracking-[0.4em] text-yametee-muted dark:text-white/70">
+                      Collection
+                    </p>
                     <h3 className="font-heading text-3xl text-yametee-foreground dark:text-white mt-2">
                       {collection.title}
                     </h3>
-                    <p className="text-sm text-yametee-muted dark:text-white/70 mt-3">{collection.copy}</p>
+                    <p className="text-sm text-yametee-muted dark:text-white/70 mt-3">
+                      {collection.copy}
+                    </p>
                   </div>
                   <span className="text-xs uppercase tracking-[0.3em] text-yametee-muted dark:text-white/70 mt-6">
                     Explore →
@@ -306,41 +334,54 @@ export default async function Home() {
           <div className="container mx-auto grid gap-8 lg:grid-cols-[2fr,3fr]">
             <div className="rounded-3xl border border-yametee-border bg-[var(--yametee-card)] dark:bg-yametee-gray/60 p-6 flex flex-col justify-between shadow-[0_15px_60px_rgba(0,0,0,0.05)] dark:shadow-none">
               <div>
-                <p className="text-xs uppercase tracking-[0.4em] text-yametee-muted dark:text-white/70">Lookbook</p>
+                <p className="text-xs uppercase tracking-[0.4em] text-yametee-muted dark:text-white/70">
+                  Lookbook
+                </p>
                 <h3 className="font-heading text-3xl text-yametee-foreground dark:text-white mt-3">
                   Studio snapshots across Manila
                 </h3>
                 <p className="text-sm text-yametee-muted dark:text-white/70 mt-3">
-                  We shoot every capsule ourselves—rooftops, trains, and neon corners around the city.
+                  We shoot every capsule ourselves—rooftops, trains, and neon corners around the
+                  city.
                 </p>
               </div>
               <div className="mt-6 space-y-4">
-                {lookbookStories.map((story) => (
+                {lookbookStories.map(story => (
                   <div key={story.title} className="border-t border-yametee-border pt-4">
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-xs uppercase tracking-[0.3em] text-yametee-muted dark:text-white/60">
                           {story.location}
                         </p>
-                        <p className="font-heading text-xl text-yametee-foreground dark:text-white">{story.title}</p>
+                        <p className="font-heading text-xl text-yametee-foreground dark:text-white">
+                          {story.title}
+                        </p>
                       </div>
                       <span className="text-yametee-red text-lg">↗</span>
                     </div>
-                    <p className="text-sm text-yametee-muted dark:text-white/70 mt-2">{story.note}</p>
+                    <p className="text-sm text-yametee-muted dark:text-white/70 mt-2">
+                      {story.note}
+                    </p>
                   </div>
                 ))}
               </div>
             </div>
 
             <div className="grid gap-6">
-              {studioStories.map((story) => (
+              {studioStories.map(story => (
                 <div
                   key={story.title}
                   className="rounded-3xl border border-yametee-border bg-[var(--yametee-card)] dark:bg-yametee-gray/50 p-5 shadow-[0_15px_55px_rgba(0,0,0,0.05)] dark:shadow-none"
                 >
-                  <p className="text-xs uppercase tracking-[0.3em] text-yametee-muted dark:text-white/60">{story.date}</p>
-                  <h4 className="font-heading text-2xl text-yametee-foreground dark:text-white mt-2">{story.title}</h4>
-                  <p className="text-sm text-yametee-muted dark:text-white/70 mt-2">{story.summary}</p>
+                  <p className="text-xs uppercase tracking-[0.3em] text-yametee-muted dark:text-white/60">
+                    {story.date}
+                  </p>
+                  <h4 className="font-heading text-2xl text-yametee-foreground dark:text-white mt-2">
+                    {story.title}
+                  </h4>
+                  <p className="text-sm text-yametee-muted dark:text-white/70 mt-2">
+                    {story.summary}
+                  </p>
                   <Link
                     href="/about"
                     className="text-xs uppercase tracking-[0.3em] text-yametee-foreground dark:text-white mt-4 inline-flex items-center gap-2"
@@ -349,9 +390,9 @@ export default async function Home() {
                   </Link>
                 </div>
               ))}
-              </div>
             </div>
-          </section>
+          </div>
+        </section>
       </main>
 
       <Footer />

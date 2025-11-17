@@ -3,7 +3,8 @@ import { redirect } from 'next/navigation'
 import { ADMIN_SESSION_COOKIE, AdminSession, verifyAdminSessionToken } from './admin-tokens'
 
 export async function getAdminSession(): Promise<AdminSession | null> {
-  const token = cookies().get(ADMIN_SESSION_COOKIE)?.value
+  const cookieStore = await cookies()
+  const token = cookieStore.get(ADMIN_SESSION_COOKIE)?.value
   if (!token) {
     return null
   }
@@ -20,4 +21,3 @@ export async function requireAdminSession(): Promise<AdminSession> {
 
   return session
 }
-

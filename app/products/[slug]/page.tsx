@@ -25,8 +25,9 @@ async function getProduct(slug: string) {
   }
 }
 
-export default async function ProductPage({ params }: { params: { slug: string } }) {
-  const product = await getProduct(params.slug)
+export default async function ProductPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params
+  const product = await getProduct(slug)
 
   if (!product) {
     notFound()
@@ -37,13 +38,13 @@ export default async function ProductPage({ params }: { params: { slug: string }
     name: product.name,
     description: product.description,
     brand: product.brand,
-    images: product.images.map((image) => ({
+    images: product.images.map(image => ({
       id: image.id,
       imageUrl: image.imageUrl,
       color: image.color,
       isPrimary: image.isPrimary,
     })),
-    variants: product.variants.map((variant) => ({
+    variants: product.variants.map(variant => ({
       id: variant.id,
       size: variant.size,
       color: variant.color,
@@ -56,7 +57,7 @@ export default async function ProductPage({ params }: { params: { slug: string }
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
-      
+
       <main className="flex-1 py-12 px-4">
         <div className="container mx-auto">
           <ProductDetailClient product={safeProduct} />

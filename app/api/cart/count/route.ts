@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
     const itemCount = cart.items.reduce((sum, item) => sum + item.quantity, 0)
 
     return NextResponse.json({ count: itemCount })
-  } catch (error: any) {
+  } catch (error) {
     console.error('Get cart count error:', error)
     return NextResponse.json({ count: 0 })
   }

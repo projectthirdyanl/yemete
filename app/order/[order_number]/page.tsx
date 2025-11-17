@@ -37,10 +37,12 @@ export default async function OrderPage({
   params,
   searchParams,
 }: {
-  params: { order_number: string }
-  searchParams: { status?: string }
+  params: Promise<{ order_number: string }>
+  searchParams: Promise<{ status?: string }>
 }) {
-  const order = await getOrder(params.order_number)
+  const { order_number } = await params
+  const { status } = await searchParams
+  const order = await getOrder(order_number)
 
   if (!order) {
     notFound()
@@ -51,7 +53,7 @@ export default async function OrderPage({
     subtotal: Number(order.subtotal),
     shippingFee: Number(order.shippingFee),
     grandTotal: Number(order.grandTotal),
-    items: order.items.map((item) => ({
+    items: order.items.map(item => ({
       ...item,
       totalPrice: Number(item.totalPrice),
       variant: {
@@ -64,12 +66,12 @@ export default async function OrderPage({
   const orderData = safeOrder
 
   const isPaid = orderData.paymentStatus === 'PAID'
-  const isSuccess = searchParams.status === 'success'
+  const isSuccess = status === 'success'
 
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
-      
+
       <main className="flex-1 py-12 px-4">
         <div className="container mx-auto max-w-4xl">
           <div className="text-center mb-8">
@@ -103,7 +105,8 @@ export default async function OrderPage({
                   Order #{orderData.orderNumber}
                 </h1>
                 <p className="text-gray-600 dark:text-gray-400">
-                  Payment Status: <span className="text-yellow-500 font-semibold">{orderData.paymentStatus}</span>
+                  Payment Status:{' '}
+                  <span className="text-yellow-500 font-semibold">{orderData.paymentStatus}</span>
                 </p>
               </div>
             )}
@@ -114,11 +117,15 @@ export default async function OrderPage({
             <div className="space-y-2 text-gray-700 dark:text-gray-300">
               <div className="flex justify-between">
                 <span>Order Number</span>
-                <span className="font-semibold text-gray-900 dark:text-white">{orderData.orderNumber}</span>
+                <span className="font-semibold text-gray-900 dark:text-white">
+                  {orderData.orderNumber}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span>Status</span>
-                <span className="font-semibold text-gray-900 dark:text-white">{orderData.status}</span>
+                <span className="font-semibold text-gray-900 dark:text-white">
+                  {orderData.status}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span>Payment Status</span>
@@ -142,7 +149,7 @@ export default async function OrderPage({
           <div className="bg-white dark:bg-yametee-gray border border-gray-200 dark:border-gray-700 rounded-lg p-6 mb-6">
             <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Items</h2>
             <div className="space-y-4">
-              {orderData.items.map((item) => (
+              {orderData.items.map(item => (
                 <div key={item.id} className="flex gap-4">
                   {item.product.images[0] && (
                     <img
@@ -169,13 +176,18 @@ export default async function OrderPage({
 
           {orderData.address && (
             <div className="bg-white dark:bg-yametee-gray border border-gray-200 dark:border-gray-700 rounded-lg p-6 mb-6">
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Shipping Address</h2>
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+                Shipping Address
+              </h2>
               <div className="text-gray-700 dark:text-gray-300">
-                <p className="font-semibold text-gray-900 dark:text-white">{orderData.address.fullName}</p>
+                <p className="font-semibold text-gray-900 dark:text-white">
+                  {orderData.address.fullName}
+                </p>
                 <p>{orderData.address.line1}</p>
                 {orderData.address.line2 && <p>{orderData.address.line2}</p>}
                 <p>
-                  {orderData.address.city}, {orderData.address.province} {orderData.address.postalCode}
+                  {orderData.address.city}, {orderData.address.province}{' '}
+                  {orderData.address.postalCode}
                 </p>
                 <p>{orderData.address.country}</p>
                 <p className="mt-2">Phone: {orderData.address.phone}</p>

@@ -1,21 +1,48 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { Prisma } from '@prisma/client'
 import { generateOrderNumber } from '@/lib/utils'
 import { createPayMongoCheckout, PaymentMethod } from '@/lib/paymongo'
 import { getCartSessionId, getOrCreateCart } from '@/lib/cart'
+import type { CartItemResponse } from '@yametee/types'
+
+interface CheckoutCartItem {
+  productId: string
+  variantId: string
+  size: string
+  color: string
+  quantity: number
+  price: number | string
+  productName: string
+  imageUrl?: string
+}
+
+interface CheckoutCustomer {
+  email?: string
+  name: string
+  phone: string
+  line1: string
+  line2?: string
+  city: string
+  province: string
+  postalCode: string
+}
+
+interface CheckoutRequestBody {
+  cart: CheckoutCartItem[]
+  customer: CheckoutCustomer
+  paymentMethod: PaymentMethod
+}
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
+    const body: CheckoutRequestBody = await request.json()
     const { cart, customer, paymentMethod } = body
 
     // Validate payment method
     const validPaymentMethods: PaymentMethod[] = ['gcash', 'paymaya', 'card', 'bank_transfer']
     if (!paymentMethod || !validPaymentMethods.includes(paymentMethod)) {
-      return NextResponse.json(
-        { error: 'Please select a valid payment method' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Please select a valid payment method' }, { status: 400 })
     }
 
     if (!cart || cart.length === 0) {
@@ -29,10 +56,7 @@ export async function POST(request: NextRequest) {
       })
 
       if (!variant) {
-        return NextResponse.json(
-          { error: `Variant not found: ${item.variantId}` },
-          { status: 400 }
-        )
+        return NextResponse.json({ error: `Variant not found: ${item.variantId}` }, { status: 400 })
       }
 
       if (variant.stockQuantity < item.quantity) {
@@ -44,10 +68,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Calculate totals
-    const subtotal = cart.reduce(
-      (sum: number, item: any) => sum + parseFloat(item.price.toString()) * item.quantity,
-      0
-    )
+    const subtotal = cart.reduce((sum: number, item: CheckoutCartItem) => {
+      const price = typeof item.price === 'string' ? parseFloat(item.price) : item.price
+      return sum + price * item.quantity
+    }, 0)
     const shippingFee = 100
     const grandTotal = subtotal + shippingFee
 
@@ -98,51 +122,102 @@ export async function POST(request: NextRequest) {
         discountTotal: 0,
         grandTotal,
         items: {
-          create: cart.map((item: any) => ({
-            productId: item.productId,
-            variantId: item.variantId,
-            quantity: item.quantity,
-            unitPrice: item.price,
-            totalPrice: parseFloat(item.price.toString()) * item.quantity,
-          })),
+          create: cart.map((item: CheckoutCartItem) => {
+            const price = typeof item.price === 'string' ? parseFloat(item.price) : item.price
+            return {
+              productId: item.productId,
+              variantId: item.variantId,
+              quantity: item.quantity,
+              unitPrice: price,
+              totalPrice: price * item.quantity,
+            }
+          }),
         },
       },
     })
 
     // Create PayMongo checkout session with selected payment method
-    const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
-    const checkoutSession = await createPayMongoCheckout({
-      amount: Math.round(grandTotal * 100), // Convert to centavos
-      description: `Yametee Order ${orderNumber}`,
-      success_url: `${baseUrl}/order/${orderNumber}?status=success`,
-      failed_url: `${baseUrl}/checkout?status=failed`,
-      paymentMethod: paymentMethod as PaymentMethod,
-      metadata: {
-        orderId: order.id,
-        orderNumber: order.orderNumber,
+    const baseUrl =
+      process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_URL || 'http://localhost:3000'
+
+    if (!baseUrl || baseUrl === 'http://localhost:3000') {
+      console.warn(
+        'Warning: Using default localhost URL. Set NEXTAUTH_URL or NEXT_PUBLIC_URL for production.'
+      )
+    }
+
+    let checkoutSession
+    try {
+      console.log('Creating PayMongo checkout session:', {
+        amount: Math.round(grandTotal * 100),
+        orderNumber,
         paymentMethod,
-      },
-    })
+        baseUrl,
+      })
+
+      checkoutSession = await createPayMongoCheckout({
+        amount: Math.round(grandTotal * 100), // Convert to centavos
+        description: `Yametee Order ${orderNumber}`,
+        success_url: `${baseUrl}/order/${orderNumber}?status=success`,
+        failed_url: `${baseUrl}/checkout?status=failed`,
+        paymentMethod: paymentMethod as PaymentMethod,
+        // Note: PayMongo checkout sessions don't support metadata directly
+        // We store order info in the payment record instead
+      })
+
+      console.log('PayMongo checkout session created:', {
+        sessionId: checkoutSession?.data?.id,
+        hasCheckoutUrl: !!checkoutSession?.data?.attributes?.checkout_url,
+      })
+
+      if (!checkoutSession?.data?.attributes?.checkout_url) {
+        throw new Error('PayMongo did not return a checkout URL')
+      }
+    } catch (error) {
+      console.error('PayMongo checkout session creation failed:', {
+        error: error instanceof Error ? error.message : String(error),
+        orderId: order.id,
+        orderNumber,
+        grandTotal,
+      })
+      // Update order status to indicate payment setup failed - use CANCELLED since FAILED doesn't exist
+      try {
+        await prisma.order.update({
+          where: { id: order.id },
+          data: { status: 'CANCELLED' },
+        })
+      } catch (updateError) {
+        console.error('Failed to update order status:', updateError)
+      }
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      throw new Error(`Failed to create payment session: ${errorMessage}`)
+    }
 
     // Create payment record with payment method
-    await prisma.payment.create({
-      data: {
-        orderId: order.id,
-        provider: 'PAYMONGO',
-        providerPaymentId: checkoutSession.data.id,
-        amount: grandTotal,
-        status: 'PENDING',
-        rawPayload: {
-          paymentMethod,
-        } as any,
-      },
-    })
+    try {
+      await prisma.payment.create({
+        data: {
+          orderId: order.id,
+          provider: 'PAYMONGO',
+          providerPaymentId: checkoutSession.data.id,
+          amount: grandTotal,
+          status: 'PENDING',
+          rawPayload: {
+            paymentMethod,
+            checkoutSessionId: checkoutSession.data.id,
+          } as Prisma.InputJsonValue,
+        },
+      })
+    } catch (error) {
+      console.error('Failed to create payment record:', error)
+      // Don't fail checkout if payment record creation fails, but log it
+    }
 
     // Clear the cart after successful order creation
     try {
       const sessionId = await getCartSessionId()
       const cart = await getOrCreateCart(sessionId)
-      
+
       // Delete all cart items
       await prisma.cartItem.deleteMany({
         where: { cartId: cart.id },
@@ -152,15 +227,23 @@ export async function POST(request: NextRequest) {
       console.error('Failed to clear cart after checkout:', error)
     }
 
+    const checkoutUrl = checkoutSession.data.attributes.checkout_url
+
+    if (!checkoutUrl) {
+      console.error('No checkout URL in PayMongo response:', checkoutSession)
+      return NextResponse.json(
+        { error: 'Failed to get payment checkout URL. Please try again or contact support.' },
+        { status: 500 }
+      )
+    }
+
     return NextResponse.json({
       orderNumber,
-      checkoutUrl: checkoutSession.data.attributes.checkout_url,
+      checkoutUrl,
     })
-  } catch (error: any) {
+  } catch (error) {
     console.error('Checkout error:', error)
-    return NextResponse.json(
-      { error: error.message || 'Checkout failed' },
-      { status: 500 }
-    )
+    const errorMessage = error instanceof Error ? error.message : 'Checkout failed'
+    return NextResponse.json({ error: errorMessage }, { status: 500 })
   }
 }

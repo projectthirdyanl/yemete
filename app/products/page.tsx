@@ -33,31 +33,38 @@ export default async function ProductsPage() {
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
-      
+
       <main className="flex-1 py-12 px-4">
         <div className="container mx-auto">
           <div className="max-w-3xl mb-12">
-            <p className="text-xs uppercase tracking-[0.3em] text-gray-500 dark:text-gray-400">Standard Shirts</p>
+            <p className="text-xs uppercase tracking-[0.3em] text-gray-500 dark:text-gray-400">
+              Standard Shirts
+            </p>
             <h1 className="text-4xl font-bold text-gray-900 dark:text-white mt-3">Shop Tees</h1>
             <p className="text-base text-gray-600 dark:text-gray-400 mt-3">
-              Core graphics and everyday staples that stay in stock. Updated fits, pre-shrunk, ready for daily rotation.
+              Core graphics and everyday staples that stay in stock. Updated fits, pre-shrunk, ready
+              for daily rotation.
             </p>
           </div>
-          
+
           {products.length === 0 ? (
             <div className="text-center py-20">
-            <p className="text-gray-600 dark:text-gray-400 text-xl mb-3">No Shop Tees available yet.</p>
-            <p className="text-gray-500 dark:text-gray-500">
-              Check the Drops page or come back soon for fresh restocks.
-            </p>
+              <p className="text-gray-600 dark:text-gray-400 text-xl mb-3">
+                No Shop Tees available yet.
+              </p>
+              <p className="text-gray-500 dark:text-gray-500">
+                Check the Drops page or come back soon for fresh restocks.
+              </p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {products.map((product) => {
-                const variant = product.variants[0]
-                const primaryImage = product.images[0]
-                const secondaryImage = product.images[1]
-                
+              {products.map(product => {
+                const variant = product.variants?.[0]
+                const primaryImage = product.images?.[0]
+                const secondaryImage = product.images?.[1]
+
+                if (!variant) return null
+
                 return (
                   <Link
                     key={product.id}
@@ -91,7 +98,7 @@ export default async function ProductsPage() {
                       {variant && (
                         <div className="flex items-baseline gap-2">
                           <p className="text-yametee-red text-xl font-bold">
-                            {formatPrice(variant.price)}
+                            {formatPrice(Number(variant.price))}
                           </p>
                           <p className="text-gray-400 text-sm line-through">₱799</p>
                         </div>

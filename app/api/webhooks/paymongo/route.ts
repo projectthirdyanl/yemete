@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.text()
-    
+
     // Verify webhook signature
     // In production, implement proper HMAC verification
     // For now, we'll accept the webhook if secret matches
@@ -106,11 +106,9 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ received: true })
-  } catch (error: any) {
+  } catch (error) {
     console.error('Webhook error:', error)
-    return NextResponse.json(
-      { error: error.message || 'Webhook processing failed' },
-      { status: 500 }
-    )
+    const errorMessage = error instanceof Error ? error.message : 'Webhook processing failed'
+    return NextResponse.json({ error: errorMessage }, { status: 500 })
   }
 }
