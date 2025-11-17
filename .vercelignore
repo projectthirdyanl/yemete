@@ -1,0 +1,11 @@
+# Prisma
+prisma/migrations
+*.db
+*.db-journal
+
+# Development
+.env.local
+.env*.local
+
+# Build artifacts that should be regenerated
+.next/cache
