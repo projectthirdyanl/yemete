@@ -2,6 +2,8 @@ import AdminLayout from '@/components/AdminLayout'
 import { prisma } from '@/lib/prisma'
 import Link from 'next/link'
 
+export const dynamic = 'force-dynamic'
+
 async function getOrders(status?: string) {
   try {
     const where: {

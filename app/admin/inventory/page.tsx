@@ -3,6 +3,8 @@ import { prisma } from '@/lib/prisma'
 import Link from 'next/link'
 import UpdateStockForm from '@/components/UpdateStockForm'
 
+export const dynamic = 'force-dynamic'
+
 async function getInventory() {
   try {
     const variants = await prisma.variant.findMany({

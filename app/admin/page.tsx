@@ -1,6 +1,8 @@
 import AdminLayout from '@/components/AdminLayout'
 import { prisma } from '@/lib/prisma'
 
+export const dynamic = 'force-dynamic'
+
 async function getStats() {
   try {
     const totalSales = await prisma.order.aggregate({
@@ -26,15 +28,21 @@ async function getStats() {
       _sum: { grandTotal: true },
     })
 
-    const [totalCustomers, lowStockProducts, featuredProducts, dropProducts, standardProducts, draftProducts] =
-      await Promise.all([
-        prisma.customer.count(),
-        prisma.variant.count({ where: { stockQuantity: { lt: 10 } } }),
-        prisma.product.count({ where: { isFeatured: true, status: 'ACTIVE' } }),
-        prisma.product.count({ where: { isDrop: true, status: 'ACTIVE' } }),
-        prisma.product.count({ where: { isStandard: true, status: 'ACTIVE' } }),
-        prisma.product.count({ where: { status: 'DRAFT' } }),
-      ])
+    const [
+      totalCustomers,
+      lowStockProducts,
+      featuredProducts,
+      dropProducts,
+      standardProducts,
+      draftProducts,
+    ] = await Promise.all([
+      prisma.customer.count(),
+      prisma.variant.count({ where: { stockQuantity: { lt: 10 } } }),
+      prisma.product.count({ where: { isFeatured: true, status: 'ACTIVE' } }),
+      prisma.product.count({ where: { isDrop: true, status: 'ACTIVE' } }),
+      prisma.product.count({ where: { isStandard: true, status: 'ACTIVE' } }),
+      prisma.product.count({ where: { status: 'DRAFT' } }),
+    ])
 
     const recentOrders = await prisma.order.findMany({
       take: 10,
@@ -177,8 +185,12 @@ export default async function AdminDashboard() {
         <div className="bg-white dark:bg-yametee-gray border border-gray-200 dark:border-gray-700 rounded-2xl p-6 space-y-4">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
-              <p className="text-xs uppercase tracking-[0.4em] text-gray-500 dark:text-gray-400">Storefront</p>
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mt-1">Placement Overview</h2>
+              <p className="text-xs uppercase tracking-[0.4em] text-gray-500 dark:text-gray-400">
+                Storefront
+              </p>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
+                Placement Overview
+              </h2>
               <p className="text-sm text-gray-600 dark:text-gray-400">
                 Align drops, featured picks, and staple tees with the refreshed storefront sections.
               </p>
@@ -216,15 +228,23 @@ export default async function AdminDashboard() {
                 badge: 'Work in progress',
                 description: 'Products still hidden or awaiting approval.',
               },
-            ].map((placement) => (
+            ].map(placement => (
               <div
                 key={placement.label}
                 className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-yametee-dark/40 p-4"
               >
-                <p className="text-xs uppercase tracking-[0.3em] text-yametee-red mb-1">{placement.badge}</p>
-                <p className="text-3xl font-bold text-gray-900 dark:text-white">{placement.value}</p>
-                <p className="text-sm font-semibold text-gray-900 dark:text-white">{placement.label}</p>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{placement.description}</p>
+                <p className="text-xs uppercase tracking-[0.3em] text-yametee-red mb-1">
+                  {placement.badge}
+                </p>
+                <p className="text-3xl font-bold text-gray-900 dark:text-white">
+                  {placement.value}
+                </p>
+                <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                  {placement.label}
+                </p>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                  {placement.description}
+                </p>
               </div>
             ))}
           </div>
@@ -236,9 +256,7 @@ export default async function AdminDashboard() {
             <h2 className="text-xl font-bold text-gray-900 dark:text-white">Recent Orders</h2>
           </div>
           {stats.recentOrders.length === 0 ? (
-            <div className="p-6 text-center text-gray-600 dark:text-gray-400">
-              No orders yet
-            </div>
+            <div className="p-6 text-center text-gray-600 dark:text-gray-400">No orders yet</div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
@@ -265,7 +283,7 @@ export default async function AdminDashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {stats.recentOrders.map((order) => (
+                  {stats.recentOrders.map(order => (
                     <tr
                       key={order.id}
                       className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-yametee-dark/50 transition-colors"
@@ -293,12 +311,12 @@ export default async function AdminDashboard() {
                             order.status === 'COMPLETED'
                               ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
                               : order.status === 'PENDING'
-                              ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400'
-                              : order.status === 'SHIPPED'
-                              ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
-                              : order.status === 'CANCELLED'
-                              ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
-                              : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-400'
+                                ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400'
+                                : order.status === 'SHIPPED'
+                                  ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
+                                  : order.status === 'CANCELLED'
+                                    ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
+                                    : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-400'
                           }`}
                         >
                           {order.status}

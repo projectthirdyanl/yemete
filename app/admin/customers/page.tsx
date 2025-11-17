@@ -2,6 +2,8 @@ import AdminLayout from '@/components/AdminLayout'
 import { prisma } from '@/lib/prisma'
 import Link from 'next/link'
 
+export const dynamic = 'force-dynamic'
+
 async function getCustomers() {
   try {
     const customers = await prisma.customer.findMany({
@@ -66,7 +68,7 @@ export default async function AdminCustomersPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {customers.map((customer) => (
+                  {customers.map(customer => (
                     <tr
                       key={customer.id}
                       className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-yametee-dark/50 transition-colors"
@@ -74,7 +76,9 @@ export default async function AdminCustomersPage() {
                       <td className="p-4 text-gray-900 dark:text-white font-medium">
                         {customer.name || 'N/A'}
                       </td>
-                      <td className="p-4 text-gray-900 dark:text-white">{customer.email || 'N/A'}</td>
+                      <td className="p-4 text-gray-900 dark:text-white">
+                        {customer.email || 'N/A'}
+                      </td>
                       <td className="p-4 text-gray-600 dark:text-gray-400">
                         {customer.phone || 'N/A'}
                       </td>

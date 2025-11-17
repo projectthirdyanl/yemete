@@ -3,6 +3,8 @@ import { prisma } from '@/lib/prisma'
 import AdminLayout from '@/components/AdminLayout'
 import DeleteProductButton from '@/components/DeleteProductButton'
 
+export const dynamic = 'force-dynamic'
+
 async function getProducts() {
   try {
     const products = await prisma.product.findMany({
