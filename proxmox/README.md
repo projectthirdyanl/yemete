@@ -46,15 +46,15 @@ This directory contains deployment scripts and configurations for deploying Yame
 
 ### On Each VM/Container:
 
-1. **Docker** installed and running
-2. **Docker Compose** installed
-3. **Network connectivity** between all VMs (bridge networking)
-4. **Firewall rules** configured to allow:
+1. **Node.js 20.x** installed (see `setup-nodejs.sh`)
+2. **Network connectivity** between all VMs (bridge networking)
+3. **Firewall rules** configured to allow:
    - Web Platform → Database (5432)
    - Web Platform → Redis (6379)
    - Worker → Database (5432)
    - Worker → Redis (6379)
    - Proxy → Web Platform (3000)
+4. **Systemd** available for service management
 
 ### Database VM (192.168.120.42)
 
@@ -77,12 +77,21 @@ GRANT ALL PRIVILEGES ON DATABASE yame_tee TO yametee_user;
 Redis should be installed and running:
 
 ```bash
-# Example Redis setup (if using container)
-docker run -d \
-  --name redis \
-  -p 6379:6379 \
-  --restart unless-stopped \
-  redis:7-alpine
+# Example Redis setup (direct installation)
+sudo apt update
+sudo apt install redis-server
+
+# Configure Redis to accept connections from internal network
+sudo nano /etc/redis/redis.conf
+# Comment out: bind 127.0.0.1
+# Or set: bind 0.0.0.0
+
+# Restart Redis
+sudo systemctl enable redis-server
+sudo systemctl restart redis-server
+
+# Configure firewall (if using ufw)
+sudo ufw allow from 192.168.120.0/24 to any port 6379
 ```
 
 ## Deployment Steps
@@ -126,7 +135,7 @@ cd yametee
 nano .env
 
 # Run deployment script
-./proxmox/deploy-web.sh
+sudo bash proxmox/deploy-web-direct.sh
 ```
 
 ### 3. Deploy Background Worker (192.168.120.45)
@@ -143,7 +152,7 @@ cd yametee
 nano .env
 
 # Run deployment script
-./proxmox/deploy-worker.sh
+sudo bash proxmox/deploy-worker-direct.sh
 ```
 
 ### 4. Configure Tunnel/Proxy (192.168.120.38)
@@ -222,19 +231,20 @@ Expected response:
 
 ```bash
 # On background-job VM
-docker logs yametee-worker
+sudo systemctl status yametee-worker
+sudo journalctl -u yametee-worker -f
 ```
 
-### Check Container Status
+### Check Service Status
 
 ```bash
 # On web-platform VM
-docker ps
-docker logs yametee-web
+sudo systemctl status yametee-web
+sudo journalctl -u yametee-web -f
 
 # On background-job VM
-docker ps
-docker logs yametee-worker
+sudo systemctl status yametee-worker
+sudo journalctl -u yametee-worker -f
 ```
 
 ## Troubleshooting
@@ -248,13 +258,13 @@ docker logs yametee-worker
 
 ### Redis Connection Issues
 
-1. Verify Redis is running: `docker ps | grep redis` or `redis-cli ping`
+1. Verify Redis is running: `sudo systemctl status redis-server` or `redis-cli ping`
 2. Check firewall: Ensure port 6379 is open
 3. Test connection: `redis-cli -h 192.168.120.44 ping`
 
 ### Worker Not Processing Jobs
 
-1. Check worker logs: `docker logs yametee-worker`
+1. Check worker logs: `sudo journalctl -u yametee-worker -f`
 2. Verify Redis connection
 3. Check if jobs are being queued (check Redis: `redis-cli -h 192.168.120.44 LLEN yametee:jobs`)
 
@@ -288,7 +298,7 @@ telnet 192.168.120.44 6379
 # On web-platform VM
 cd yametee
 git pull
-./proxmox/deploy-web.sh
+sudo bash proxmox/deploy-web-direct.sh
 ```
 
 ### Update Worker
@@ -297,7 +307,7 @@ git pull
 # On background-job VM
 cd yametee
 git pull
-./proxmox/deploy-worker.sh
+sudo bash proxmox/deploy-worker-direct.sh
 ```
 
 ### Database Migrations
@@ -305,8 +315,9 @@ git pull
 Run migrations from web-platform VM:
 
 ```bash
-cd yametee
-docker-compose -f docker-compose.web.yml exec web npx prisma migrate deploy
+cd /opt/yametee
+sudo -u yametee git pull
+sudo -u yametee npx prisma migrate deploy
 ```
 
 ## Security Considerations
@@ -316,7 +327,9 @@ docker-compose -f docker-compose.web.yml exec web npx prisma migrate deploy
 3. **Redis Access**: Restrict Redis to internal network only
 4. **Secrets Management**: Use environment variables, never commit secrets
 5. **SSL/TLS**: Use HTTPS via Cloudflare Tunnel or SSL termination at proxy
-6. **Regular Updates**: Keep Docker images and system packages updated
+6. **Regular Updates**: Keep Node.js, npm packages, and system packages updated
+7. **Service Users**: Applications run as non-root users (yametee, yametee-worker)
+8. **Systemd Security**: Services use security hardening options
 
 ## Backup Strategy
 
@@ -364,15 +377,24 @@ Then update DATABASE_URL to use port 6432.
 Configure Redis persistence if needed:
 
 ```bash
-# In redis.conf or docker run command
-redis-server --appendonly yes --appendfsync everysec
+# Edit redis.conf
+sudo nano /etc/redis/redis.conf
+
+# Add or uncomment:
+appendonly yes
+appendfsync everysec
+
+# Restart Redis
+sudo systemctl restart redis-server
 ```
 
 ## Support
 
 For issues or questions:
 
-1. Check logs: `docker logs <container-name>`
+1. Check logs: `sudo journalctl -u yametee-web -f` or `sudo journalctl -u yametee-worker -f`
 2. Check health endpoint: `curl http://192.168.120.50:3000/api/health`
-3. Review this documentation
-4. Check main README.md for application-specific issues
+3. Check service status: `sudo systemctl status yametee-web` or `sudo systemctl status yametee-worker`
+4. Review this documentation
+5. Check `proxmox/README-DIRECT.md` for detailed direct installation guide
+6. Check main README.md for application-specific issues

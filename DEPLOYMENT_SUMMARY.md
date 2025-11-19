@@ -56,18 +56,13 @@ Your Yametee application has been configured for distributed deployment on Proxm
 - ✅ Created `lib/jobs.ts` for queueing jobs from the web application
 - ✅ Added `worker` script to package.json
 
-### 3. Docker Configuration
+### 3. Direct Installation Configuration
 
-- ✅ Created `Dockerfile.worker` for worker container
-- ✅ Created `docker-compose.web.yml` for web platform
-- ✅ Created `docker-compose.worker.yml` for background worker
-- ✅ Updated main `Dockerfile` (already optimized)
-
-### 4. Deployment Scripts
-
-- ✅ Created `proxmox/deploy-web.sh` for web platform deployment
-- ✅ Created `proxmox/deploy-worker.sh` for worker deployment
-- ✅ Created comprehensive `proxmox/README.md` deployment guide
+- ✅ Created `proxmox/setup-nodejs.sh` for Node.js installation
+- ✅ Created `proxmox/deploy-web-direct.sh` for web platform deployment
+- ✅ Created `proxmox/deploy-worker-direct.sh` for background worker deployment
+- ✅ Created comprehensive `proxmox/README-DIRECT.md` deployment guide
+- ✅ Configured systemd services for process management
 
 ### 5. Documentation
 
@@ -83,13 +78,13 @@ Your Yametee application has been configured for distributed deployment on Proxm
 - `lib/redis.ts` - Redis client and cache utilities
 - `lib/jobs.ts` - Job queueing utilities
 - `scripts/worker.ts` - Background worker process
-- `Dockerfile.worker` - Worker container Dockerfile
-- `docker-compose.web.yml` - Web platform compose file
-- `docker-compose.worker.yml` - Worker compose file
-- `proxmox/deploy-web.sh` - Web deployment script
-- `proxmox/deploy-worker.sh` - Worker deployment script
+- `proxmox/setup-nodejs.sh` - Node.js installation script
+- `proxmox/deploy-web-direct.sh` - Web platform deployment script
+- `proxmox/deploy-worker-direct.sh` - Worker deployment script
+- `proxmox/README-DIRECT.md` - Direct installation guide
 - `proxmox/README.md` - Comprehensive deployment guide
 - `PROXMOX_DEPLOYMENT.md` - Quick start guide
+- `ecosystem.config.js` - PM2 configuration for process management
 
 ### Modified Files
 
@@ -114,7 +109,7 @@ npm install
 
 ### 3. Set Up Redis (192.168.120.44)
 
-- Install Redis (Docker recommended)
+- Install Redis server directly
 - Configure network access
 
 ### 4. Deploy Web Platform (192.168.120.50)
@@ -189,7 +184,7 @@ Expected:
 ### 2. Worker Logs
 
 ```bash
-docker logs yametee-worker
+sudo journalctl -u yametee-worker -f
 ```
 
 ### 3. Queue a Test Job
@@ -213,7 +208,7 @@ await queueEmailJob('user@example.com', 'Test', 'Test email')
 ## Monitoring
 
 - **Web Platform**: `http://192.168.120.50:3000/api/health`
-- **Worker**: `docker logs yametee-worker`
+- **Worker**: `sudo journalctl -u yametee-worker -f`
 - **Database**: PostgreSQL logs and connection monitoring
 - **Redis**: Memory usage and connection monitoring
 
@@ -222,9 +217,10 @@ await queueEmailJob('user@example.com', 'Test', 'Test email')
 1. ✅ Firewall rules between VMs (only necessary ports)
 2. ✅ Database access restricted to internal network
 3. ✅ Redis access restricted to internal network
-4. ✅ Non-root user in containers
+4. ✅ Non-root service users (yametee, yametee-worker)
 5. ✅ Environment variables for secrets
-6. ⚠️ SSL/TLS via Cloudflare Tunnel or Let's Encrypt (configure on proxy)
+6. ✅ Systemd security hardening (NoNewPrivileges, PrivateTmp, ProtectSystem)
+7. ⚠️ SSL/TLS via Cloudflare Tunnel or Let's Encrypt (configure on proxy)
 
 ## Support & Documentation
 
@@ -235,7 +231,9 @@ await queueEmailJob('user@example.com', 'Test', 'Test email')
 
 ## Notes
 
-- The worker uses the same codebase/image as the web platform, which is efficient for your monorepo setup
+- The worker uses the same codebase as the web platform, which is efficient for your monorepo setup
 - Redis is optional - the application will work without it (caching disabled)
 - All services communicate over the internal Proxmox network (192.168.120.0/24)
 - The tunnel/proxy (192.168.120.38) handles external access and SSL termination
+- Services are managed via systemd for better integration with the system
+- Application files are located at `/opt/yametee` (web) and `/opt/yametee-worker` (worker)

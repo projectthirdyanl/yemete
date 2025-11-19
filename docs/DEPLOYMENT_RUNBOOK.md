@@ -69,52 +69,77 @@ vercel --prod
 2. Add all required variables (see `ENVIRONMENT_VARIABLES.md`)
 3. Ensure variables are set for correct environments (Production, Preview, Development)
 
-### Method 2: Docker Container
+### Method 2: Direct Installation (Self-Hosted)
 
-#### Build Image
+#### Prerequisites
+
+- Node.js 20.x installed
+- PostgreSQL database accessible
+- Redis (optional, for caching and job queue)
+
+#### Installation Steps
 
 ```bash
-# Build locally
-docker build -t yametee:latest .
+# 1. Clone repository
+git clone <your-repo-url> yametee
+cd yametee
 
-# Build with specific tag
-docker build -t yametee:v1.0.0 .
+# 2. Install dependencies
+npm ci
 
-# Build multi-platform (amd64 + arm64)
-docker buildx build --platform linux/amd64,linux/arm64 -t yametee:latest .
+# 3. Set up environment variables
+cp .env.example .env
+# Edit .env with your configuration
+
+# 4. Generate Prisma Client
+npx prisma generate
+
+# 5. Run database migrations
+npx prisma migrate deploy
+
+# 6. Build application
+npm run build
 ```
 
-#### Push to Registry
+#### Process Management Options
+
+**Option A: PM2 (Recommended)**
 
 ```bash
-# Tag for GitHub Container Registry
-docker tag yametee:latest ghcr.io/OWNER/yametee:latest
+# Install PM2 globally (if not already installed)
+npm install -g pm2
 
-# Login to GitHub Container Registry
-echo $GITHUB_TOKEN | docker login ghcr.io -u USERNAME --password-stdin
+# Start application
+pm2 start ecosystem.config.js
 
-# Push image
-docker push ghcr.io/OWNER/yametee:latest
+# Save PM2 configuration
+pm2 save
+
+# Setup PM2 to start on boot
+pm2 startup
+# Follow the instructions provided
+
+# Monitor application
+pm2 logs yametee-web
+pm2 status
 ```
 
-#### Run Container
+**Option B: Systemd**
+
+For detailed systemd setup, see `PROXMOX_DEPLOYMENT.md` or `proxmox/README-DIRECT.md`.
 
 ```bash
-# Run with docker-compose (development)
-docker-compose up -d
+# Create systemd service (example)
+sudo nano /etc/systemd/system/yametee-web.service
 
-# Run standalone
-docker run -d \
-  --name yametee \
-  -p 3000:3000 \
-  -e DATABASE_URL="postgresql://..." \
-  -e PAYMONGO_SECRET_KEY="sk_..." \
-  -e PAYMONGO_PUBLIC_KEY="pk_..." \
-  -e PAYMONGO_WEBHOOK_SECRET="whsec_..." \
-  -e NEXTAUTH_URL="https://yametee.example.com" \
-  -e NEXTAUTH_SECRET="..." \
-  -e ADMIN_JWT_SECRET="..." \
-  yametee:latest
+# Start and enable service
+sudo systemctl daemon-reload
+sudo systemctl enable yametee-web
+sudo systemctl start yametee-web
+
+# Check status
+sudo systemctl status yametee-web
+sudo journalctl -u yametee-web -f
 ```
 
 ### Method 3: Kubernetes
@@ -207,18 +232,40 @@ vercel ls
 vercel rollback [deployment-url]
 ```
 
-### Docker Rollback
+### Direct Installation Rollback
+
+**PM2:**
 
 ```bash
-# Stop current container
-docker stop yametee
+# Stop current process
+pm2 stop yametee-web
 
-# Start previous version
-docker run -d \
-  --name yametee \
-  -p 3000:3000 \
-  [environment-variables] \
-  yametee:v0.9.0  # Previous version
+# Checkout previous version
+cd /path/to/yametee
+git checkout <previous-commit-or-tag>
+
+# Rebuild and restart
+npm ci
+npx prisma generate
+npm run build
+pm2 restart yametee-web
+```
+
+**Systemd:**
+
+```bash
+# Stop service
+sudo systemctl stop yametee-web
+
+# Checkout previous version
+cd /opt/yametee
+sudo -u yametee git checkout <previous-commit-or-tag>
+
+# Rebuild and restart
+sudo -u yametee npm ci
+sudo -u yametee npx prisma generate
+sudo -u yametee npm run build
+sudo systemctl start yametee-web
 ```
 
 ### Kubernetes Rollback
@@ -259,7 +306,8 @@ pg_restore -d yametee_db backup.dump
 
 1. **Check build logs:**
    - Vercel: Dashboard → Deployments → [Failed Deployment] → Build Logs
-   - Docker: `docker logs yametee`
+   - PM2: `pm2 logs yametee-web`
+   - Systemd: `journalctl -u yametee-web -n 100`
    - K8s: `kubectl logs deployment/yametee -n yametee-staging`
 
 2. **Common issues:**
@@ -293,8 +341,9 @@ pg_restore -d yametee_db backup.dump
 ### Related Documentation
 
 - `ENVIRONMENT_VARIABLES.md` - Environment variable reference
-- `Dockerfile` - Container build instructions
-- `docker-compose.yml` - Local development setup
+- `PROXMOX_DEPLOYMENT.md` - Proxmox deployment guide
+- `proxmox/README-DIRECT.md` - Direct installation guide
+- `ecosystem.config.js` - PM2 configuration
 - `k8s/` - Kubernetes manifests
 - `.github/workflows/ci-cd.yml` - CI/CD pipeline configuration
 
@@ -306,10 +355,16 @@ npm run db:migrate          # Create migration
 npm run db:push             # Push schema changes
 npm run db:generate         # Generate Prisma Client
 
-# Docker
-docker ps                    # List running containers
-docker logs -f yametee       # Follow logs
-docker exec -it yametee sh   # Shell into container
+# PM2
+pm2 list                     # List running processes
+pm2 logs yametee-web         # Follow logs
+pm2 restart yametee-web      # Restart process
+pm2 stop yametee-web         # Stop process
+
+# Systemd
+sudo systemctl status yametee-web  # Check status
+sudo journalctl -u yametee-web -f  # Follow logs
+sudo systemctl restart yametee-web # Restart service
 
 # Kubernetes
 kubectl get pods -n yametee-staging

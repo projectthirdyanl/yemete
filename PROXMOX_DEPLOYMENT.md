@@ -10,12 +10,9 @@ This guide provides a quick reference for deploying Yametee on your Proxmox serv
 - **Background Jobs**: `192.168.120.45` - Worker process
 - **Tunnel/Proxy**: `192.168.120.38` - Cloudflare Tunnel or Nginx
 
-## Deployment Methods
+## Deployment Method
 
-This guide supports two deployment methods:
-
-1. **Direct Installation** (Recommended for CT/VMs without Docker) - See [Direct Installation](#direct-installation-method)
-2. **Docker Installation** - See [Docker Installation](#docker-installation-method)
+This guide uses **Direct Installation** with systemd for process management. No Docker required.
 
 ## Direct Installation Method
 
@@ -171,125 +168,6 @@ git pull
 sudo bash proxmox/deploy-worker-direct.sh
 ```
 
-## Docker Installation Method
-
-**Note:** This method requires Docker to be installed. If Docker is not available, use the Direct Installation method above.
-
-## Quick Deployment (Docker Method)
-
-### 1. Database Setup (192.168.120.42)
-
-```bash
-# Install PostgreSQL
-sudo apt update
-sudo apt install postgresql postgresql-contrib
-
-# Create database and user
-sudo -u postgres psql
-```
-
-```sql
-CREATE DATABASE yame_tee;
-CREATE USER yametee_user WITH PASSWORD 'your_secure_password';
-GRANT ALL PRIVILEGES ON DATABASE yame_tee TO yametee_user;
-\q
-```
-
-```bash
-# Configure PostgreSQL to accept connections
-sudo nano /etc/postgresql/*/main/postgresql.conf
-# Set: listen_addresses = '*'
-
-sudo nano /etc/postgresql/*/main/pg_hba.conf
-# Add: host    all    all    192.168.120.0/24    md5
-
-sudo systemctl restart postgresql
-```
-
-### 2. Redis Setup (192.168.120.44)
-
-**For Direct Installation:**
-
-```bash
-sudo apt install redis-server
-sudo systemctl enable redis-server
-sudo systemctl start redis-server
-```
-
-**For Docker Installation:**
-
-```bash
-docker run -d \
-  --name redis \
-  -p 6379:6379 \
-  --restart unless-stopped \
-  redis:7-alpine
-```
-
-### 3. Web Platform Deployment (192.168.120.50)
-
-```bash
-# Clone repository
-git clone <your-repo> yametee
-cd yametee
-
-# Create .env file
-cp .env.example .env
-nano .env
-```
-
-Update `.env`:
-
-```bash
-DATABASE_URL="postgresql://yametee_user:your_password@192.168.120.42:5432/yame_tee?schema=public"
-REDIS_URL="redis://192.168.120.44:6379"
-NEXTAUTH_URL="https://your-domain.com"  # Or http://192.168.120.50:3000
-# ... other variables
-```
-
-**For Direct Installation:**
-
-```bash
-# Deploy web platform (includes migrations)
-sudo bash proxmox/deploy-web-direct.sh
-```
-
-**For Docker Installation:**
-
-```bash
-# Run database migrations
-docker run --rm -v $(pwd)/prisma:/app/prisma \
-  --env-file .env \
-  node:20-alpine sh -c "cd /app && npm install -g prisma && prisma migrate deploy"
-
-# Deploy web platform
-./proxmox/deploy-web.sh
-```
-
-### 4. Background Worker Deployment (192.168.120.45)
-
-```bash
-# Clone same repository
-git clone <your-repo> yametee
-cd yametee
-
-# Create .env file (same as web platform, but NEXTAUTH_URL not needed)
-cp .env.example .env
-nano .env
-```
-
-**For Direct Installation:**
-
-```bash
-sudo bash proxmox/deploy-worker-direct.sh
-```
-
-**For Docker Installation:**
-
-```bash
-./proxmox/deploy-worker.sh
-```
-
 ### 5. Tunnel/Proxy Setup (192.168.120.38)
 
 #### Option A: Cloudflare Tunnel
@@ -361,7 +239,8 @@ curl http://192.168.120.50:3000/api/health
 
 ```bash
 # On worker VM
-docker logs yametee-worker
+sudo systemctl status yametee-worker
+sudo journalctl -u yametee-worker -f
 ```
 
 ### Check Database Connection
@@ -386,13 +265,13 @@ redis-cli -h 192.168.120.44 ping
 
 ### Redis Connection Failed
 
-1. Check Redis is running: `docker ps | grep redis` or `redis-cli ping`
+1. Check Redis is running: `sudo systemctl status redis-server` or `redis-cli ping`
 2. Check firewall: `sudo ufw allow from 192.168.120.0/24 to any port 6379`
 3. Test connection: `redis-cli -h 192.168.120.44 ping`
 
 ### Worker Not Processing Jobs
 
-1. Check logs: `docker logs yametee-worker`
+1. Check logs: `sudo journalctl -u yametee-worker -f`
 2. Verify Redis connection
 3. Check if jobs are queued: `redis-cli -h 192.168.120.44 LLEN yametee:jobs`
 
@@ -403,7 +282,7 @@ redis-cli -h 192.168.120.44 ping
 ```bash
 cd yametee
 git pull
-./proxmox/deploy-web.sh
+sudo bash proxmox/deploy-web-direct.sh
 ```
 
 ### Update Worker
@@ -411,21 +290,23 @@ git pull
 ```bash
 cd yametee
 git pull
-./proxmox/deploy-worker.sh
+sudo bash proxmox/deploy-worker-direct.sh
 ```
 
 ### Database Migrations
 
 ```bash
 # On web platform VM
-cd yametee
-docker-compose -f docker-compose.web.yml exec web npx prisma migrate deploy
+cd /opt/yametee
+sudo -u yametee git pull
+sudo -u yametee npx prisma migrate deploy
 ```
 
 ## Monitoring
 
 - **Health Check**: `http://192.168.120.50:3000/api/health`
-- **Container Logs**: `docker logs -f yametee-web` or `docker logs -f yametee-worker`
+- **Service Logs**: `sudo journalctl -u yametee-web -f` or `sudo journalctl -u yametee-worker -f`
+- **Service Status**: `sudo systemctl status yametee-web` or `sudo systemctl status yametee-worker`
 - **Database**: Monitor PostgreSQL logs and connections
 - **Redis**: Monitor memory usage and connection count
 

@@ -67,7 +67,13 @@ chown -R "$SERVICE_USER:$SERVICE_USER" "$APP_DIR"
 echo -e "${GREEN}Copying application files...${NC}"
 if [ -d .git ]; then
     # If in a git repository, copy everything
-    rsync -av --exclude='.git' --exclude='node_modules' --exclude='.next' . "$APP_DIR/"
+    if command -v rsync &> /dev/null; then
+        rsync -av --exclude='.git' --exclude='node_modules' --exclude='.next' . "$APP_DIR/"
+    else
+        # Fallback to cp if rsync is not available
+        echo -e "${YELLOW}rsync not found, using cp instead...${NC}"
+        find . -mindepth 1 -maxdepth 1 ! -name '.git' ! -name 'node_modules' ! -name '.next' -exec cp -r {} "$APP_DIR/" \;
+    fi
 else
     # Otherwise, copy current directory
     cp -r . "$APP_DIR/"

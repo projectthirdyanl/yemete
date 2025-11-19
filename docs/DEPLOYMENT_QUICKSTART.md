@@ -34,28 +34,41 @@
 
 ---
 
-### Option 2: Docker (Self-Hosted)
+### Option 2: Direct Installation (Self-Hosted)
 
-**Time:** ~10 minutes
+**Time:** ~15 minutes
 
 ```bash
-# 1. Build image
-docker build -t yametee:latest .
+# 1. Install Node.js (if not already installed)
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt-get install -y nodejs
 
-# 2. Run container
-docker run -d \
-  --name yametee \
-  -p 3000:3000 \
-  -e DATABASE_URL="postgresql://user:pass@host:5432/db" \
-  -e PAYMONGO_SECRET_KEY="sk_test_..." \
-  -e PAYMONGO_PUBLIC_KEY="pk_test_..." \
-  -e PAYMONGO_WEBHOOK_SECRET="whsec_..." \
-  -e NEXTAUTH_URL="https://your-domain.com" \
-  -e NEXTAUTH_SECRET="your-secret" \
-  -e ADMIN_JWT_SECRET="your-admin-secret" \
-  yametee:latest
+# 2. Clone repository
+git clone <your-repo> yametee
+cd yametee
 
-# 3. Check health
+# 3. Install dependencies
+npm ci
+
+# 4. Set up environment variables
+cp .env.example .env
+nano .env  # Edit with your configuration
+
+# 5. Generate Prisma Client and run migrations
+npx prisma generate
+npx prisma migrate deploy
+
+# 6. Build application
+npm run build
+
+# 7. Start with PM2 (recommended) or systemd
+pm2 start ecosystem.config.js
+pm2 save
+pm2 startup  # Follow instructions to enable on boot
+
+# Or use systemd (see PROXMOX_DEPLOYMENT.md for details)
+
+# 8. Check health
 curl http://localhost:3000/api/health
 ```
 
@@ -137,7 +150,7 @@ curl https://your-app.vercel.app/api/health
 
 - Check environment variables are set
 - Verify database is accessible
-- Review logs: `docker logs yametee` or Vercel dashboard
+- Review logs: `pm2 logs` or `journalctl -u yametee-web -f` or Vercel dashboard
 
 **Health check fails?**
 
@@ -148,5 +161,6 @@ curl https://your-app.vercel.app/api/health
 **Need to rollback?**
 
 - Vercel: Dashboard → Deployments → Promote previous deployment
-- Docker: `docker stop yametee && docker run [previous-image]`
+- PM2: `pm2 restart yametee-web` or `git checkout <previous-commit> && pm2 restart yametee-web`
+- Systemd: `systemctl restart yametee-web` or restore from backup
 - K8s: `kubectl rollout undo deployment/yametee -n yametee-staging`

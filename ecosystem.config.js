@@ -4,11 +4,12 @@ module.exports = {
       name: 'yametee-web',
       script: 'npm',
       args: 'start',
-      cwd: '/home/it-admin/Documents/yametee',
+      cwd: '/opt/apps/yemete',
       instances: 1,
       exec_mode: 'fork',
       env: {
         NODE_ENV: 'production',
+        DATABASE_URL: 'postgresql://itadmin:thirdynalforever@192.168.120.6:5432/yame_tee?schema=public',
       },
       error_file: './logs/pm2-error.log',
       out_file: './logs/pm2-out.log',
