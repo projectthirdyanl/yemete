@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { ADMIN_SESSION_COOKIE, verifyAdminSessionToken } from './lib/admin-tokens'
+import { monitoring } from './lib/monitoring'
 
 const PUBLIC_ADMIN_PATHS = ['/admin/login', '/api/admin/login', '/api/admin/init']
 
@@ -36,6 +37,7 @@ function redirectToLogin(request: NextRequest) {
 }
 
 export async function middleware(request: NextRequest) {
+  const startTime = Date.now()
   const { pathname } = request.nextUrl
   const isAdminRoute = pathname.startsWith('/admin')
   const isAdminApiRoute = pathname.startsWith('/api/admin')
@@ -51,20 +53,39 @@ export async function middleware(request: NextRequest) {
   const token = request.cookies.get(ADMIN_SESSION_COOKIE)?.value
 
   if (!token) {
-    return isAdminApiRoute
+    const response = isAdminApiRoute
       ? NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
       : redirectToLogin(request)
+    
+    // Track request
+    const duration = Date.now() - startTime
+    monitoring.trackRequest(false, duration, pathname)
+    
+    return response
   }
 
   const session = await verifyAdminSessionToken(token)
 
   if (!session) {
-    return isAdminApiRoute
+    const response = isAdminApiRoute
       ? NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
       : redirectToLogin(request)
+    
+    // Track request
+    const duration = Date.now() - startTime
+    monitoring.trackRequest(false, duration, pathname)
+    
+    return response
   }
 
-  return NextResponse.next()
+  const response = NextResponse.next()
+  
+  // Track successful request
+  const duration = Date.now() - startTime
+  monitoring.trackRequest(true, duration, pathname)
+  response.headers.set('X-Response-Time', `${duration}ms`)
+  
+  return response
 }
 
 export const config = {

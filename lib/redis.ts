@@ -1,4 +1,5 @@
 import { createClient, RedisClientType } from 'redis'
+import { logger } from './logger'
 
 let redisClient: RedisClientType | null = null
 
@@ -18,31 +19,33 @@ export function getRedisClient(): RedisClientType {
     socket: {
       reconnectStrategy: retries => {
         if (retries > 10) {
-          console.error('Redis: Max reconnection attempts reached')
+          logger.error('Redis: Max reconnection attempts reached', undefined, { retries })
           return new Error('Max reconnection attempts reached')
         }
         // Exponential backoff: 50ms, 100ms, 200ms, 400ms, etc.
-        return Math.min(retries * 50, 1000)
+        const delay = Math.min(retries * 50, 1000)
+        logger.debug('Redis reconnecting', undefined, { retry: retries, delay })
+        return delay
       },
       connectTimeout: 5000,
     },
   })
 
   redisClient.on('error', err => {
-    console.error('Redis Client Error:', err)
+    logger.error('Redis Client Error', err)
   })
 
   redisClient.on('connect', () => {
-    console.log('Redis Client Connected')
+    logger.info('Redis Client Connected')
   })
 
   redisClient.on('reconnecting', () => {
-    console.log('Redis Client Reconnecting...')
+    logger.info('Redis Client Reconnecting...')
   })
 
   // Connect lazily - don't await here
   redisClient.connect().catch(err => {
-    console.error('Failed to connect to Redis:', err)
+    logger.error('Failed to connect to Redis', err)
   })
 
   return redisClient
@@ -74,7 +77,7 @@ export const cache = {
       const value = await client.get(key)
       return value ? (JSON.parse(value) as T) : null
     } catch (error) {
-      console.error(`Redis GET error for key ${key}:`, error)
+      logger.error(`Redis GET error for key ${key}`, error, { key })
       return null
     }
   },
@@ -96,7 +99,7 @@ export const cache = {
       }
       return true
     } catch (error) {
-      console.error(`Redis SET error for key ${key}:`, error)
+      logger.error(`Redis SET error for key ${key}`, error, { key })
       return false
     }
   },
@@ -113,7 +116,7 @@ export const cache = {
       await client.del(key)
       return true
     } catch (error) {
-      console.error(`Redis DEL error for key ${key}:`, error)
+      logger.error(`Redis DEL error for key ${key}`, error, { key })
       return false
     }
   },
@@ -130,7 +133,7 @@ export const cache = {
       const result = await client.exists(key)
       return result > 0
     } catch (error) {
-      console.error(`Redis EXISTS error for key ${key}:`, error)
+      logger.error(`Redis EXISTS error for key ${key}`, error, { key })
       return false
     }
   },

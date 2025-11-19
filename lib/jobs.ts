@@ -1,4 +1,5 @@
 import { getRedisClient } from './redis'
+import { logger } from './logger'
 
 export interface Job {
   id: string
@@ -16,6 +17,11 @@ export interface Job {
  */
 export async function queueJob(type: string, data: unknown): Promise<string | null> {
   try {
+    if (!type || typeof type !== 'string') {
+      logger.error('Invalid job type', undefined, { type })
+      return null
+    }
+
     const redis = getRedisClient()
     if (!redis.isOpen) {
       await redis.connect()
@@ -30,10 +36,11 @@ export async function queueJob(type: string, data: unknown): Promise<string | nu
 
     // Push job to Redis queue (RPUSH adds to end of list)
     await redis.rPush('yametee:jobs', JSON.stringify(job))
-
+    
+    logger.debug('Job queued successfully', { jobId: job.id, jobType: type })
     return job.id
   } catch (error) {
-    console.error('Error queueing job:', error)
+    logger.error('Error queueing job', error, { jobType: type })
     return null
   }
 }

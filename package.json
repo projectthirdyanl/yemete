@@ -17,6 +17,7 @@
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
     "init:admin": "tsx scripts/init-admin.ts",
+    "seed:admin": "tsx scripts/seed-default-admin.ts",
     "create:admin": "node scripts/create-admin.js",
     "worker": "tsx scripts/worker.ts",
     "postinstall": "prisma generate",

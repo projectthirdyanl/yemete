@@ -186,6 +186,14 @@ if systemctl is-active --quiet yametee-web; then
         echo -e "${YELLOW}Warning: Health check failed, but service is running${NC}"
     fi
     
+    # Seed default admin if it doesn't exist
+    echo -e "${GREEN}Checking for default admin user...${NC}"
+    if sudo -u "$SERVICE_USER" npm run seed:admin 2>&1 | grep -q "already exists"; then
+        echo -e "${GREEN}✓ Admin user already exists${NC}"
+    else
+        echo -e "${YELLOW}⚠ Default admin created. Please change password after first login!${NC}"
+    fi
+    
     # Show service status
     echo -e "${GREEN}Service status:${NC}"
     systemctl status yametee-web --no-pager -l

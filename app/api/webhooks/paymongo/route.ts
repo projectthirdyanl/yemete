@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyWebhookSignature } from '@/lib/paymongo'
+import { queueOrderJob, queueEmailJob, queueWebhookJob } from '@/lib/jobs'
+import { logger } from '@/lib/logger'
+import { UnauthorizedError, ValidationError, formatErrorResponse } from '@/lib/errors'
 
 export async function POST(request: NextRequest) {
   try {
@@ -8,20 +11,34 @@ export async function POST(request: NextRequest) {
     const webhookSecret = process.env.PAYMONGO_WEBHOOK_SECRET
 
     if (!signature || !webhookSecret) {
-      return NextResponse.json({ error: 'Missing signature or secret' }, { status: 401 })
+      throw new UnauthorizedError('Missing signature or secret')
     }
 
-    const body = await request.text()
+    let body: string
+    try {
+      body = await request.text()
+    } catch (error) {
+      throw new ValidationError('Failed to read request body')
+    }
 
     // Verify webhook signature
-    // In production, implement proper HMAC verification
-    // For now, we'll accept the webhook if secret matches
     if (!verifyWebhookSignature(body, signature, webhookSecret)) {
-      return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
+      logger.warn('Invalid webhook signature', { signature })
+      throw new UnauthorizedError('Invalid signature')
     }
 
-    const payload = JSON.parse(body)
-    const event = payload.data
+    let payload: unknown
+    try {
+      payload = JSON.parse(body)
+    } catch (error) {
+      throw new ValidationError('Invalid JSON payload')
+    }
+
+    if (!payload || typeof payload !== 'object' || !('data' in payload)) {
+      throw new ValidationError('Invalid webhook payload structure')
+    }
+
+    const event = (payload as { data: unknown }).data
 
     // Handle payment.paid event
     if (event.type === 'payment.paid' || event.attributes.type === 'payment.paid') {
@@ -39,6 +56,12 @@ export async function POST(request: NextRequest) {
           order: {
             include: {
               items: true,
+              customer: {
+                select: {
+                  email: true,
+                  name: true,
+                },
+              },
             },
           },
         },
@@ -74,6 +97,30 @@ export async function POST(request: NextRequest) {
             },
           })
         }
+
+        // Queue background jobs for order processing and notifications
+        try {
+          // Queue order processing job
+          await queueOrderJob(payment.orderId)
+          logger.info('Order processing job queued', { orderId: payment.orderId })
+
+          // Queue email notification if customer email exists
+          if (payment.order.customer?.email) {
+            await queueEmailJob(
+              payment.order.customer.email,
+              `Order ${payment.order.orderNumber} Confirmed`,
+              `Your order ${payment.order.orderNumber} has been confirmed and payment received.`
+            )
+            logger.info('Email notification queued', { orderId: payment.orderId, email: payment.order.customer.email })
+          }
+
+          // Queue webhook processing job
+          await queueWebhookJob('payment.paid', payload)
+          logger.info('Webhook processing job queued', { paymentId })
+        } catch (error) {
+          // Log error but don't fail webhook processing if job queueing fails
+          logger.error('Failed to queue background jobs', error, { orderId: payment.orderId, paymentId })
+        }
       }
     }
 
@@ -107,8 +154,12 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ received: true })
   } catch (error) {
-    console.error('Webhook error:', error)
-    const errorMessage = error instanceof Error ? error.message : 'Webhook processing failed'
-    return NextResponse.json({ error: errorMessage }, { status: 500 })
+    logger.error('Webhook error', error)
+    const errorResponse = formatErrorResponse(error)
+    const statusCode = error instanceof UnauthorizedError || error instanceof ValidationError
+      ? error.statusCode
+      : 500
+    
+    return NextResponse.json(errorResponse, { status: statusCode })
   }
 }

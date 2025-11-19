@@ -1,45 +1,40 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { verifyAdmin, createAdminUser } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { verifyAdmin } from '@/lib/auth'
 import { createAdminSessionCookie, createAdminSessionToken } from '@/lib/admin-tokens'
+import { logger } from '@/lib/logger'
+import { ValidationError, UnauthorizedError, formatErrorResponse } from '@/lib/errors'
 
 export async function POST(request: NextRequest) {
+  const startTime = Date.now()
+  
   try {
-    const body = await request.json()
+    let body: { email?: string; password?: string }
+    try {
+      body = await request.json()
+    } catch (error) {
+      throw new ValidationError('Invalid request body')
+    }
+
     const { email, password } = body
 
     if (!email || !password) {
-      return NextResponse.json({ error: 'Email and password required' }, { status: 400 })
+      throw new ValidationError('Email and password required')
     }
 
-    // Check if this is the first admin user (auto-create if no admins exist)
-    const adminCount = await prisma.customer.count({
-      where: {
-        hashedPassword: { not: null },
-      },
-    })
-
-    // If no admin exists and email looks like admin, auto-create
-    if (adminCount === 0 && (email.includes('admin') || email === 'admin@yametee.com')) {
-      if (process.env.NODE_ENV === 'development') {
-        console.log('No admin users found. Creating first admin user...')
-      }
-      await createAdminUser(email, password)
+    // Validate email format
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      throw new ValidationError('Invalid email format')
     }
 
+    // Verify admin credentials (this includes bcrypt comparison which can be slow)
     const customer = await verifyAdmin(email, password)
 
     if (!customer) {
-      return NextResponse.json(
-        {
-          error:
-            'Invalid credentials. If this is your first login, make sure you use a valid email and password.',
-          hint: 'You can create an admin user by calling POST /api/admin/init',
-        },
-        { status: 401 }
-      )
+      logger.warn('Admin login failed: invalid credentials', { email })
+      throw new UnauthorizedError('Invalid email or password')
     }
 
+    // Create session token
     const token = await createAdminSessionToken({
       id: customer.id,
       email: customer.email,
@@ -54,10 +49,20 @@ export async function POST(request: NextRequest) {
     })
 
     response.cookies.set(createAdminSessionCookie(token))
+    
+    const duration = Date.now() - startTime
+    logger.info('Admin login successful', { email, duration })
+    
     return response
   } catch (error) {
-    console.error('Login error:', error)
-    const errorMessage = error instanceof Error ? error.message : 'Login failed'
-    return NextResponse.json({ error: errorMessage }, { status: 500 })
+    const duration = Date.now() - startTime
+    logger.error('Admin login error', error, { duration })
+    
+    const errorResponse = formatErrorResponse(error)
+    const statusCode = error instanceof ValidationError || error instanceof UnauthorizedError
+      ? error.statusCode
+      : 500
+    
+    return NextResponse.json(errorResponse, { status: statusCode })
   }
 }

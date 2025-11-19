@@ -83,8 +83,10 @@ sudo apt install redis-server
 
 # Configure Redis to accept connections from internal network
 sudo nano /etc/redis/redis.conf
-# Comment out: bind 127.0.0.1
-# Or set: bind 0.0.0.0
+# Recommended: Bind to specific IP for better security
+bind 127.0.0.1 192.168.120.44
+# Alternative: Bind to all interfaces (less secure)
+# bind 0.0.0.0
 
 # Restart Redis
 sudo systemctl enable redis-server

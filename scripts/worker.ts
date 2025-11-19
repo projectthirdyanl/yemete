@@ -14,6 +14,8 @@
 
 import { getRedisClient, closeRedis } from '../lib/redis'
 import { prisma } from '../lib/prisma'
+import { logger } from '../lib/logger'
+import { NotFoundError, DatabaseError, ValidationError } from '../lib/errors'
 
 const WORKER_NAME = 'yametee-worker'
 const WORKER_INTERVAL = 5000 // 5 seconds
@@ -39,11 +41,11 @@ function validateEnvironment(): void {
   }
 
   if (missing.length > 0) {
-    console.error(`Missing required environment variables: ${missing.join(', ')}`)
+    logger.error(`Missing required environment variables: ${missing.join(', ')}`)
     process.exit(1)
   }
 
-  console.log('Environment validation passed')
+  logger.info('Environment validation passed')
 }
 
 /**
@@ -52,10 +54,10 @@ function validateEnvironment(): void {
 async function testDatabaseConnection(): Promise<boolean> {
   try {
     await prisma.$connect()
-    console.log('Database connection successful')
+    logger.info('Database connection successful')
     return true
   } catch (error) {
-    console.error('Database connection failed:', error)
+    logger.error('Database connection failed', error)
     return false
   }
 }
@@ -68,11 +70,11 @@ async function testRedisConnection(): Promise<boolean> {
     const redis = getRedisClient()
     await redis.connect()
     await redis.ping()
-    console.log('Redis connection successful')
+    logger.info('Redis connection successful')
     return true
   } catch (error) {
-    console.error('Redis connection failed:', error)
-    console.warn('Worker will continue but Redis operations will fail')
+    logger.error('Redis connection failed', error)
+    logger.warn('Worker will continue but Redis operations will fail')
     return false
   }
 }
@@ -81,7 +83,7 @@ async function testRedisConnection(): Promise<boolean> {
  * Process a single job
  */
 async function processJob(job: Job): Promise<void> {
-  console.log(`[${new Date().toISOString()}] Processing job ${job.id} of type ${job.type}`)
+  logger.info(`Processing job ${job.id} of type ${job.type}`, { jobId: job.id, jobType: job.type })
 
   try {
     switch (job.type) {
@@ -98,11 +100,12 @@ async function processJob(job: Job): Promise<void> {
         await processCacheWarmJob(job.data as { keys: string[] })
         break
       default:
-        console.warn(`Unknown job type: ${job.type}`)
+        logger.warn(`Unknown job type: ${job.type}`, { jobId: job.id, jobType: job.type })
     }
   } catch (error) {
-    console.error(`Error processing job ${job.id}:`, error)
-    // In production, you might want to retry failed jobs
+    logger.error(`Error processing job ${job.id}`, error, { jobId: job.id, jobType: job.type })
+    // In production, you might want to retry failed jobs or send to dead letter queue
+    throw error // Re-throw to allow retry logic if needed
   }
 }
 
@@ -112,17 +115,33 @@ async function processJob(job: Job): Promise<void> {
 async function processOrderJob(data: { orderId: string }): Promise<void> {
   const { orderId } = data
 
-  // Example: Update order status, send confirmation emails, etc.
-  const order = await prisma.order.findUnique({
-    where: { id: orderId },
-  })
-
-  if (!order) {
-    throw new Error(`Order ${orderId} not found`)
+  if (!orderId || typeof orderId !== 'string') {
+    throw new ValidationError('Invalid orderId in job data')
   }
 
-  console.log(`Order ${orderId} processed: ${order.status}`)
-  // Add your order processing logic here
+  try {
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+      include: {
+        customer: true,
+        items: true,
+      },
+    })
+
+    if (!order) {
+      throw new NotFoundError('Order', orderId)
+    }
+
+    logger.info(`Order ${orderId} processed`, { orderId, status: order.status })
+    
+    // Add your order processing logic here
+    // Example: Send confirmation emails, update inventory, etc.
+  } catch (error) {
+    if (error instanceof NotFoundError) {
+      throw error
+    }
+    throw new DatabaseError(`Failed to process order ${orderId}`, error)
+  }
 }
 
 /**
@@ -131,9 +150,21 @@ async function processOrderJob(data: { orderId: string }): Promise<void> {
 async function processEmailJob(data: { to: string; subject: string; body: string }): Promise<void> {
   const { to, subject, body } = data
 
+  if (!to || !subject || !body) {
+    throw new ValidationError('Missing required email fields')
+  }
+
+  // Validate email format
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) {
+    throw new ValidationError(`Invalid email address: ${to}`)
+  }
+
+  logger.info(`Sending email to ${to}`, { to, subject })
+  
   // In production, integrate with your email service (SendGrid, SES, etc.)
-  console.log(`Sending email to ${to}: ${subject}`)
   // Add your email sending logic here
+  // Example:
+  // await sendEmail({ to, subject, body })
 }
 
 /**
@@ -142,7 +173,11 @@ async function processEmailJob(data: { to: string; subject: string; body: string
 async function processWebhookJob(data: { event: string; payload: unknown }): Promise<void> {
   const { event, payload } = data
 
-  console.log(`Processing webhook event: ${event}`)
+  if (!event || typeof event !== 'string') {
+    throw new ValidationError('Invalid webhook event data')
+  }
+
+  logger.info(`Processing webhook event: ${event}`, { event })
   // Add your webhook processing logic here
 }
 
@@ -152,7 +187,11 @@ async function processWebhookJob(data: { event: string; payload: unknown }): Pro
 async function processCacheWarmJob(data: { keys: string[] }): Promise<void> {
   const { keys } = data
 
-  console.log(`Warming cache for ${keys.length} keys`)
+  if (!Array.isArray(keys) || keys.length === 0) {
+    throw new ValidationError('Invalid cache keys array')
+  }
+
+  logger.info(`Warming cache for ${keys.length} keys`, { keyCount: keys.length })
   // Add your cache warming logic here
 }
 
@@ -180,7 +219,7 @@ async function getNextJob(): Promise<Job | null> {
 
     return JSON.parse(result.element) as Job
   } catch (error) {
-    console.error('Error getting next job:', error)
+    logger.error('Error getting next job', error)
     return null
   }
 }
@@ -189,19 +228,22 @@ async function getNextJob(): Promise<Job | null> {
  * Main worker loop
  */
 async function workerLoop(): Promise<void> {
-  console.log(`[${new Date().toISOString()}] Worker ${WORKER_NAME} started`)
+  logger.info(`Worker ${WORKER_NAME} started`)
 
   // Test connections before starting
   const dbConnected = await testDatabaseConnection()
   if (!dbConnected) {
-    console.error('Cannot start worker: Database connection failed')
+    logger.error('Cannot start worker: Database connection failed')
     process.exit(1)
   }
 
   // Redis is optional for now, but log a warning
-  await testRedisConnection()
+  const redisConnected = await testRedisConnection()
+  if (!redisConnected) {
+    logger.warn('Redis connection failed. Worker will continue but job processing will fail.')
+  }
 
-  console.log(`[${new Date().toISOString()}] Worker ${WORKER_NAME} ready and waiting for jobs`)
+  logger.info(`Worker ${WORKER_NAME} ready and waiting for jobs`)
 
   while (true) {
     try {
@@ -214,7 +256,7 @@ async function workerLoop(): Promise<void> {
       // Small delay to prevent tight loop
       await new Promise(resolve => setTimeout(resolve, 100))
     } catch (error) {
-      console.error('Worker loop error:', error)
+      logger.error('Worker loop error', error)
       // Wait before retrying
       await new Promise(resolve => setTimeout(resolve, WORKER_INTERVAL))
     }
@@ -225,9 +267,14 @@ async function workerLoop(): Promise<void> {
  * Graceful shutdown handler
  */
 async function shutdown(): Promise<void> {
-  console.log('Shutting down worker...')
-  await closeRedis()
-  await prisma.$disconnect()
+  logger.info('Shutting down worker...')
+  try {
+    await closeRedis()
+    await prisma.$disconnect()
+    logger.info('Worker shutdown complete')
+  } catch (error) {
+    logger.error('Error during worker shutdown', error)
+  }
   process.exit(0)
 }
 
@@ -236,22 +283,22 @@ process.on('SIGINT', shutdown)
 
 // Handle uncaught errors
 process.on('uncaughtException', error => {
-  console.error('Uncaught exception:', error)
+  logger.error('Uncaught exception', error)
   shutdown().finally(() => process.exit(1))
 })
 
 process.on('unhandledRejection', (reason, promise) => {
-  console.error('Unhandled rejection at:', promise, 'reason:', reason)
+  logger.error('Unhandled rejection', reason instanceof Error ? reason : new Error(String(reason)), { promise: String(promise) })
 })
 
 // Validate environment and start worker
 try {
   validateEnvironment()
   workerLoop().catch(error => {
-    console.error('Fatal worker error:', error)
+    logger.error('Fatal worker error', error)
     shutdown().finally(() => process.exit(1))
   })
 } catch (error) {
-  console.error('Failed to start worker:', error)
+  logger.error('Failed to start worker', error)
   process.exit(1)
 }

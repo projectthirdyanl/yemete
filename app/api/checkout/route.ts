@@ -4,6 +4,9 @@ import { Prisma } from '@prisma/client'
 import { generateOrderNumber } from '@/lib/utils'
 import { createPayMongoCheckout, PaymentMethod } from '@/lib/paymongo'
 import { getCartSessionId, getOrCreateCart } from '@/lib/cart'
+import { queueOrderJob } from '@/lib/jobs'
+import { logger } from '@/lib/logger'
+import { ValidationError, DatabaseError, ExternalServiceError, formatErrorResponse } from '@/lib/errors'
 import type { CartItemResponse } from '@yametee/types'
 
 interface CheckoutCartItem {
@@ -36,17 +39,33 @@ interface CheckoutRequestBody {
 
 export async function POST(request: NextRequest) {
   try {
-    const body: CheckoutRequestBody = await request.json()
+    let body: CheckoutRequestBody
+    try {
+      body = await request.json()
+    } catch (error) {
+      throw new ValidationError('Invalid request body')
+    }
+
     const { cart, customer, paymentMethod } = body
 
     // Validate payment method
     const validPaymentMethods: PaymentMethod[] = ['gcash', 'paymaya', 'card', 'bank_transfer']
     if (!paymentMethod || !validPaymentMethods.includes(paymentMethod)) {
-      return NextResponse.json({ error: 'Please select a valid payment method' }, { status: 400 })
+      throw new ValidationError('Please select a valid payment method')
     }
 
-    if (!cart || cart.length === 0) {
-      return NextResponse.json({ error: 'Cart is empty' }, { status: 400 })
+    if (!cart || !Array.isArray(cart) || cart.length === 0) {
+      throw new ValidationError('Cart is empty')
+    }
+
+    // Validate customer data
+    if (!customer || !customer.name || !customer.phone || !customer.line1 || !customer.city || !customer.province || !customer.postalCode) {
+      throw new ValidationError('Missing required customer information')
+    }
+
+    // Validate email format if provided
+    if (customer.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customer.email)) {
+      throw new ValidationError('Invalid email format')
     }
 
     // Validate stock availability
@@ -136,19 +155,25 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    // Create PayMongo checkout session with selected payment method
-    const baseUrl =
-      process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_URL || 'http://localhost:3000'
+    // Queue order processing job for background worker
+    try {
+      await queueOrderJob(order.id)
+      logger.info('Order processing job queued', { orderId: order.id })
+    } catch (error) {
+      // Log error but don't fail checkout if job queueing fails
+      logger.error('Failed to queue order processing job', error, { orderId: order.id })
+    }
 
-    if (!baseUrl || baseUrl === 'http://localhost:3000') {
-      console.warn(
-        'Warning: Using default localhost URL. Set NEXTAUTH_URL or NEXT_PUBLIC_URL for production.'
-      )
+    // Create PayMongo checkout session with selected payment method
+    const baseUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_URL || 'http://localhost:3000'
+
+    if (process.env.NODE_ENV === 'production' && (!baseUrl || baseUrl === 'http://localhost:3000')) {
+      logger.warn('Using default localhost URL in production. Set NEXTAUTH_URL or NEXT_PUBLIC_URL.')
     }
 
     let checkoutSession
     try {
-      console.log('Creating PayMongo checkout session:', {
+      logger.info('Creating PayMongo checkout session', {
         amount: Math.round(grandTotal * 100),
         orderNumber,
         paymentMethod,
@@ -161,36 +186,37 @@ export async function POST(request: NextRequest) {
         success_url: `${baseUrl}/order/${orderNumber}?status=success`,
         failed_url: `${baseUrl}/checkout?status=failed`,
         paymentMethod: paymentMethod as PaymentMethod,
-        // Note: PayMongo checkout sessions don't support metadata directly
-        // We store order info in the payment record instead
       })
 
-      console.log('PayMongo checkout session created:', {
+      logger.info('PayMongo checkout session created', {
         sessionId: checkoutSession?.data?.id,
-        hasCheckoutUrl: !!checkoutSession?.data?.attributes?.checkout_url,
+        orderId: order.id,
       })
 
       if (!checkoutSession?.data?.attributes?.checkout_url) {
-        throw new Error('PayMongo did not return a checkout URL')
+        throw new ExternalServiceError('PayMongo', 'Did not return a checkout URL')
       }
     } catch (error) {
-      console.error('PayMongo checkout session creation failed:', {
-        error: error instanceof Error ? error.message : String(error),
+      logger.error('PayMongo checkout session creation failed', error, {
         orderId: order.id,
         orderNumber,
         grandTotal,
       })
-      // Update order status to indicate payment setup failed - use CANCELLED since FAILED doesn't exist
+      
+      // Update order status to indicate payment setup failed
       try {
         await prisma.order.update({
           where: { id: order.id },
           data: { status: 'CANCELLED' },
         })
       } catch (updateError) {
-        console.error('Failed to update order status:', updateError)
+        logger.error('Failed to update order status after payment failure', updateError, { orderId: order.id })
       }
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-      throw new Error(`Failed to create payment session: ${errorMessage}`)
+      
+      if (error instanceof ExternalServiceError) {
+        throw error
+      }
+      throw new ExternalServiceError('PayMongo', 'Failed to create payment session', error)
     }
 
     // Create payment record with payment method
@@ -209,7 +235,7 @@ export async function POST(request: NextRequest) {
         },
       })
     } catch (error) {
-      console.error('Failed to create payment record:', error)
+      logger.error('Failed to create payment record', error, { orderId: order.id })
       // Don't fail checkout if payment record creation fails, but log it
     }
 
@@ -224,17 +250,14 @@ export async function POST(request: NextRequest) {
       })
     } catch (error) {
       // Log error but don't fail checkout if cart clearing fails
-      console.error('Failed to clear cart after checkout:', error)
+      logger.error('Failed to clear cart after checkout', error)
     }
 
     const checkoutUrl = checkoutSession.data.attributes.checkout_url
 
     if (!checkoutUrl) {
-      console.error('No checkout URL in PayMongo response:', checkoutSession)
-      return NextResponse.json(
-        { error: 'Failed to get payment checkout URL. Please try again or contact support.' },
-        { status: 500 }
-      )
+      logger.error('No checkout URL in PayMongo response', undefined, { checkoutSession })
+      throw new ExternalServiceError('PayMongo', 'Failed to get payment checkout URL')
     }
 
     return NextResponse.json({
@@ -242,8 +265,12 @@ export async function POST(request: NextRequest) {
       checkoutUrl,
     })
   } catch (error) {
-    console.error('Checkout error:', error)
-    const errorMessage = error instanceof Error ? error.message : 'Checkout failed'
-    return NextResponse.json({ error: errorMessage }, { status: 500 })
+    logger.error('Checkout error', error)
+    const errorResponse = formatErrorResponse(error)
+    const statusCode = error instanceof ValidationError || error instanceof ExternalServiceError 
+      ? error.statusCode 
+      : 500
+    
+    return NextResponse.json(errorResponse, { status: statusCode })
   }
 }

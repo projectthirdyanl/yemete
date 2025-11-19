@@ -77,10 +77,18 @@ An anime-inspired Japanese streetwear e-commerce platform built with Next.js, Po
    npx prisma db push
    ```
 
-5. **Create admin user** (optional - you can create via admin login)
+5. **Create default admin user**
    ```bash
-   # You can create an admin user by logging in with any email/password
-   # The system will create the user on first login
+   # Seed default admin (recommended)
+   npm run seed:admin
+   
+   # Or with custom credentials
+   npm run seed:admin admin@example.com mypassword
+   
+   # Default credentials:
+   # Email: admin@yametee.com
+   # Password: admin123
+   # ⚠️ Change password after first login!
    ```
 
 6. **Run the development server**
@@ -114,7 +122,20 @@ An anime-inspired Japanese streetwear e-commerce platform built with Next.js, Po
    - Storefront: http://localhost:3000
    - Admin: http://localhost:3000/admin/login
 
-### For Proxmox Deployment
+### Multi-VM/CT Deployment (Proxmox)
+
+For deploying across multiple VMs/CTs on Proxmox, see:
+- **[Complete Deployment Guide](docs/DEPLOYMENT_GUIDE.md)** - Step-by-step multi-VM deployment instructions
+- **[Proxmox README](proxmox/README.md)** - Architecture overview and configuration details
+
+**Quick Update Script:**
+```bash
+# On web platform or worker VM
+cd /path/to/yametee
+sudo bash proxmox/quick-deploy.sh
+```
+
+### For Proxmox Deployment (Legacy)
 
 1. Create a new VM or LXC container with Ubuntu Server
 2. Install Docker and Docker Compose
@@ -206,6 +227,23 @@ npm start
 | `PAYMONGO_WEBHOOK_SECRET` | PayMongo webhook secret | Yes |
 | `ADMIN_JWT_SECRET` | Secret used to sign admin session tokens | Yes |
 | `ADMIN_SESSION_MAX_AGE` | Custom admin session lifetime in seconds (defaults to 28800) | No |
+| `REDIS_URL` | Redis connection URL (defaults to redis://192.168.120.44:6379) | No |
+| `NEXTAUTH_URL` | Base URL for authentication callbacks | Yes |
+| `NEXTAUTH_SECRET` | Secret for NextAuth session encryption | Yes |
+| `MONITORING_ENABLED` | Enable monitoring and alerting (true/false) | No |
+| `ALERT_WEBHOOK_URL` | Webhook URL for alerts (Slack, Discord, etc.) | No |
+| `ALERT_ERROR_RATE_THRESHOLD` | Error rate threshold for alerts (default: 0.1) | No |
+| `ALERT_RESPONSE_TIME_THRESHOLD` | Response time threshold in ms (default: 5000) | No |
+| `ALERT_QUEUE_LENGTH_THRESHOLD` | Queue length threshold for alerts (default: 100) | No |
+
+## Monitoring and Health Checks
+
+The application includes built-in monitoring:
+
+- **Health Check**: `GET /api/health` - Service health status
+- **Metrics**: `GET /api/metrics` - Prometheus-compatible metrics
+
+See [Monitoring Setup Guide](docs/MONITORING_SETUP.md) for detailed setup instructions.
 
 ## License
 
