@@ -26,6 +26,58 @@ interface Job {
 }
 
 /**
+ * Validate required environment variables
+ */
+function validateEnvironment(): void {
+  const required = ['DATABASE_URL']
+  const missing: string[] = []
+
+  for (const key of required) {
+    if (!process.env[key]) {
+      missing.push(key)
+    }
+  }
+
+  if (missing.length > 0) {
+    console.error(`Missing required environment variables: ${missing.join(', ')}`)
+    process.exit(1)
+  }
+
+  console.log('Environment validation passed')
+}
+
+/**
+ * Test database connection
+ */
+async function testDatabaseConnection(): Promise<boolean> {
+  try {
+    await prisma.$connect()
+    console.log('Database connection successful')
+    return true
+  } catch (error) {
+    console.error('Database connection failed:', error)
+    return false
+  }
+}
+
+/**
+ * Test Redis connection
+ */
+async function testRedisConnection(): Promise<boolean> {
+  try {
+    const redis = getRedisClient()
+    await redis.connect()
+    await redis.ping()
+    console.log('Redis connection successful')
+    return true
+  } catch (error) {
+    console.error('Redis connection failed:', error)
+    console.warn('Worker will continue but Redis operations will fail')
+    return false
+  }
+}
+
+/**
  * Process a single job
  */
 async function processJob(job: Job): Promise<void> {
@@ -111,7 +163,12 @@ async function getNextJob(): Promise<Job | null> {
   try {
     const redis = getRedisClient()
     if (!redis.isOpen) {
-      await redis.connect()
+      try {
+        await redis.connect()
+      } catch (error) {
+        console.error('Failed to connect to Redis:', error)
+        return null
+      }
     }
 
     // Use Redis LIST as a simple queue (BLPOP for blocking pop)
@@ -133,6 +190,18 @@ async function getNextJob(): Promise<Job | null> {
  */
 async function workerLoop(): Promise<void> {
   console.log(`[${new Date().toISOString()}] Worker ${WORKER_NAME} started`)
+
+  // Test connections before starting
+  const dbConnected = await testDatabaseConnection()
+  if (!dbConnected) {
+    console.error('Cannot start worker: Database connection failed')
+    process.exit(1)
+  }
+
+  // Redis is optional for now, but log a warning
+  await testRedisConnection()
+
+  console.log(`[${new Date().toISOString()}] Worker ${WORKER_NAME} ready and waiting for jobs`)
 
   while (true) {
     try {
@@ -165,8 +234,24 @@ async function shutdown(): Promise<void> {
 process.on('SIGTERM', shutdown)
 process.on('SIGINT', shutdown)
 
-// Start worker
-workerLoop().catch(error => {
-  console.error('Fatal worker error:', error)
-  process.exit(1)
+// Handle uncaught errors
+process.on('uncaughtException', error => {
+  console.error('Uncaught exception:', error)
+  shutdown().finally(() => process.exit(1))
 })
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled rejection at:', promise, 'reason:', reason)
+})
+
+// Validate environment and start worker
+try {
+  validateEnvironment()
+  workerLoop().catch(error => {
+    console.error('Fatal worker error:', error)
+    shutdown().finally(() => process.exit(1))
+  })
+} catch (error) {
+  console.error('Failed to start worker:', error)
+  process.exit(1)
+}

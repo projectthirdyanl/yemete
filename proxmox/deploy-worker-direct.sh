@@ -38,12 +38,6 @@ if ! command -v node &> /dev/null; then
     fi
 fi
 
-# Check if tsx is installed globally
-if ! command -v tsx &> /dev/null; then
-    echo -e "${GREEN}Installing tsx globally...${NC}"
-    npm install -g tsx
-fi
-
 # Check if .env file exists
 if [ ! -f .env ]; then
     echo -e "${YELLOW}Warning: .env file not found. Creating from .env.example...${NC}"
@@ -98,11 +92,30 @@ fi
 # Switch to service user context for npm operations
 echo -e "${GREEN}Installing dependencies...${NC}"
 cd "$APP_DIR"
-sudo -u "$SERVICE_USER" npm ci --production=false
+su -s /bin/bash "$SERVICE_USER" -c "cd $APP_DIR && npm ci --production=false"
 
 # Generate Prisma Client
 echo -e "${GREEN}Generating Prisma Client...${NC}"
-sudo -u "$SERVICE_USER" npx prisma generate
+su -s /bin/bash "$SERVICE_USER" -c "cd $APP_DIR && npx prisma generate"
+
+# Determine tsx path (check after dependencies are installed)
+TSX_PATH=""
+if [ -f "$APP_DIR/node_modules/.bin/tsx" ]; then
+    TSX_PATH="$APP_DIR/node_modules/.bin/tsx"
+    echo -e "${GREEN}Using local tsx at: $TSX_PATH${NC}"
+elif command -v tsx &> /dev/null; then
+    TSX_PATH=$(command -v tsx)
+    echo -e "${GREEN}Found global tsx at: $TSX_PATH${NC}"
+else
+    echo -e "${GREEN}Installing tsx globally...${NC}"
+    npm install -g tsx
+    TSX_PATH=$(command -v tsx)
+    if [ -z "$TSX_PATH" ]; then
+        # Fallback to npx if tsx still not found
+        echo -e "${YELLOW}tsx not found in PATH, will use npx${NC}"
+        TSX_PATH="npx"
+    fi
+fi
 
 # Create systemd service file
 echo -e "${GREEN}Creating systemd service...${NC}"
@@ -117,7 +130,7 @@ User=$SERVICE_USER
 WorkingDirectory=$APP_DIR
 Environment="NODE_ENV=production"
 EnvironmentFile=$APP_DIR/.env
-ExecStart=/usr/bin/tsx $APP_DIR/$WORKER_SCRIPT
+ExecStart=$TSX_PATH $APP_DIR/$WORKER_SCRIPT
 Restart=always
 RestartSec=10
 StandardOutput=journal
@@ -165,8 +178,18 @@ if systemctl is-active --quiet yametee-worker; then
     systemctl status yametee-worker --no-pager -l
 else
     echo -e "${RED}Error: Service failed to start${NC}"
+    echo -e "${YELLOW}Checking service status...${NC}"
     systemctl status yametee-worker --no-pager -l
+    echo ""
+    echo -e "${YELLOW}Recent logs:${NC}"
     journalctl -u yametee-worker -n 50 --no-pager
+    echo ""
+    echo -e "${YELLOW}Troubleshooting tips:${NC}"
+    echo "  1. Check if DATABASE_URL is set in $APP_DIR/.env"
+    echo "  2. Verify database is accessible: su -s /bin/bash $SERVICE_USER -c 'psql \$DATABASE_URL -c \"SELECT 1\"'"
+    echo "  3. Check Redis connection (if used): redis-cli -h 192.168.120.44 ping"
+    echo "  4. Test worker manually: su -s /bin/bash $SERVICE_USER -c '$TSX_PATH $APP_DIR/$WORKER_SCRIPT'"
+    echo "  5. Check file permissions: ls -la $APP_DIR"
     exit 1
 fi
 
