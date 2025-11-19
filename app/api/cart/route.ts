@@ -39,20 +39,12 @@ export async function GET(request: NextRequest) {
       itemCount: cartItems.reduce((sum, item) => sum + item.quantity, 0),
     }
 
-    const apiResponse: ApiResponse<CartResponse> = {
-      success: true,
-      data: responseData,
-    }
-
-    return NextResponse.json(apiResponse)
+    // Return in format expected by frontend
+    return NextResponse.json(responseData)
   } catch (error) {
     console.error('Get cart error:', error)
     const errorMessage = error instanceof Error ? error.message : 'Failed to get cart'
-    const errorResponse: ApiResponse<null> = {
-      success: false,
-      error: errorMessage,
-    }
-    return NextResponse.json(errorResponse, { status: 500 })
+    return NextResponse.json({ error: errorMessage }, { status: 500 })
   }
 }
 
@@ -159,20 +151,12 @@ export async function POST(request: NextRequest) {
       itemCount: cartItems.reduce((sum, item) => sum + item.quantity, 0),
     }
 
-    const apiResponse: ApiResponse<CartResponse> = {
-      success: true,
-      data: responseData,
-    }
-
-    return NextResponse.json(apiResponse)
+    // Return in format expected by frontend
+    return NextResponse.json(responseData)
   } catch (error) {
     console.error('Add to cart error:', error)
     const errorMessage = error instanceof Error ? error.message : 'Failed to add to cart'
-    const errorResponse: ApiResponse<null> = {
-      success: false,
-      error: errorMessage,
-    }
-    return NextResponse.json(errorResponse, { status: 500 })
+    return NextResponse.json({ error: errorMessage }, { status: 500 })
   }
 }
 
@@ -215,12 +199,7 @@ export async function PUT(request: NextRequest) {
         itemCount: cartItems.reduce((sum, item) => sum + item.quantity, 0),
       }
 
-      const apiResponse: ApiResponse<CartResponse> = {
-        success: true,
-        data: responseData,
-      }
-
-      return NextResponse.json(apiResponse)
+      return NextResponse.json(responseData)
     }
 
     // Get cart item to check stock
@@ -268,19 +247,10 @@ export async function PUT(request: NextRequest) {
       itemCount: cartItems.reduce((sum, item) => sum + item.quantity, 0),
     }
 
-    const apiResponse: ApiResponse<CartResponse> = {
-      success: true,
-      data: responseData,
-    }
-
-    return NextResponse.json(apiResponse)
+    return NextResponse.json(responseData)
   } catch (error) {
     console.error('Update cart error:', error)
     const errorMessage = error instanceof Error ? error.message : 'Failed to update cart'
-    const errorResponse: ApiResponse<null> = {
-      success: false,
-      error: errorMessage,
-    }
-    return NextResponse.json(errorResponse, { status: 500 })
+    return NextResponse.json({ error: errorMessage }, { status: 500 })
   }
 }

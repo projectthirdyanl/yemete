@@ -19,9 +19,13 @@ async function getProducts() {
         variants: {
           orderBy: { price: 'asc' },
           take: 1,
+          where: {
+            stockQuantity: { gt: 0 }, // Only show variants with stock
+          },
         },
       },
       orderBy: { createdAt: 'desc' },
+      take: 50, // Limit results for performance
     })
     return products
   } catch (error) {

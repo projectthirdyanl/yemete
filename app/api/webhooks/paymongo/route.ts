@@ -40,12 +40,38 @@ export async function POST(request: NextRequest) {
 
     const event = (payload as { data: unknown }).data
 
+    // Type guard for event object
+    if (!event || typeof event !== 'object') {
+      throw new ValidationError('Invalid event data structure')
+    }
+
+    const eventData = event as {
+      type?: string
+      id?: string
+      attributes?: {
+        type?: string
+        id?: string
+        amount?: number
+        data?: {
+          attributes?: {
+            amount?: number
+          }
+        }
+      }
+    }
+
     // Handle payment.paid event
-    if (event.type === 'payment.paid' || event.attributes.type === 'payment.paid') {
-      const paymentId = event.id || event.attributes.id
-      const amount = event.attributes?.amount
-        ? event.attributes.amount / 100
-        : event.attributes?.data?.attributes?.amount / 100
+    if (eventData.type === 'payment.paid' || eventData.attributes?.type === 'payment.paid') {
+      const paymentId = eventData.id || eventData.attributes?.id
+      if (!paymentId || typeof paymentId !== 'string') {
+        throw new ValidationError('Missing payment ID in webhook payload')
+      }
+      
+      const amount = eventData.attributes?.amount
+        ? eventData.attributes.amount / 100
+        : eventData.attributes?.data?.attributes?.amount
+        ? eventData.attributes.data.attributes.amount / 100
+        : undefined
 
       // Find payment by provider payment ID
       const payment = await prisma.payment.findFirst({
@@ -125,8 +151,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Handle payment.failed event
-    if (event.type === 'payment.failed' || event.attributes.type === 'payment.failed') {
-      const paymentId = event.id || event.attributes.id
+    if (eventData.type === 'payment.failed' || eventData.attributes?.type === 'payment.failed') {
+      const paymentId = eventData.id || eventData.attributes?.id
+      if (!paymentId || typeof paymentId !== 'string') {
+        throw new ValidationError('Missing payment ID in webhook payload')
+      }
 
       const payment = await prisma.payment.findFirst({
         where: {

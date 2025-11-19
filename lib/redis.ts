@@ -19,12 +19,12 @@ export function getRedisClient(): RedisClientType {
     socket: {
       reconnectStrategy: retries => {
         if (retries > 10) {
-          logger.error('Redis: Max reconnection attempts reached', undefined, { retries })
+          logger.error('Redis: Max reconnection attempts reached', new Error('Max reconnection attempts reached'), { retries })
           return new Error('Max reconnection attempts reached')
         }
         // Exponential backoff: 50ms, 100ms, 200ms, 400ms, etc.
         const delay = Math.min(retries * 50, 1000)
-        logger.debug('Redis reconnecting', undefined, { retry: retries, delay })
+        logger.debug('Redis reconnecting', { retry: retries, delay })
         return delay
       },
       connectTimeout: 5000,
