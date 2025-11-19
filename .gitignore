@@ -29,6 +29,10 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
+# PM2 logs
+logs/
+*.log
+
 # Local env files
 .env*.local
 

@@ -115,7 +115,7 @@ async function getNextJob(): Promise<Job | null> {
     }
 
     // Use Redis LIST as a simple queue (BLPOP for blocking pop)
-    const result = await redis.blPop({ key: 'yametee:jobs', timeout: 1 })
+    const result = await redis.blPop(['yametee:jobs'], 1)
 
     if (!result) {
       return null
