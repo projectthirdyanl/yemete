@@ -61,11 +61,16 @@ export async function verifyAdminSessionToken(token: string): Promise<AdminSessi
 }
 
 export function createAdminSessionCookie(token: string) {
+  // Only use secure cookies if explicitly set or if using HTTPS
+  // In development or behind proxy, secure cookies won't work with HTTP
+  const useSecure = process.env.ADMIN_COOKIE_SECURE === 'true' || 
+                    (process.env.NODE_ENV === 'production' && process.env.NEXTAUTH_URL?.startsWith('https://'))
+  
   return {
     name: ADMIN_SESSION_COOKIE,
     value: token,
     httpOnly: true as const,
-    secure: process.env.NODE_ENV === 'production',
+    secure: useSecure,
     sameSite: 'lax' as const,
     path: '/',
     maxAge: ADMIN_SESSION_MAX_AGE,

@@ -38,9 +38,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       try {
         const response = await fetch('/api/admin/session', {
           credentials: 'include',
+          cache: 'no-store',
         })
 
         if (!response.ok) {
+          console.error('Session check failed:', response.status, await response.text().catch(() => ''))
           // Middleware should handle redirect, but if we get here, redirect to login
           const currentPath = window.location.pathname
           const redirectTo = currentPath !== '/admin/login' ? currentPath : undefined
@@ -53,8 +55,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         }
 
         const data = await response.json()
-        setSession(data.customer)
+        if (data.customer) {
+          setSession(data.customer)
+        } else {
+          console.error('No customer in session response:', data)
+          router.replace('/admin/login')
+        }
       } catch (error) {
+        console.error('Session load error:', error)
         // Network error or other issue - middleware will handle auth
         const currentPath = window.location.pathname
         const redirectTo = currentPath !== '/admin/login' ? currentPath : undefined

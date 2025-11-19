@@ -62,7 +62,29 @@ function AdminLoginForm() {
         throw new Error(data.error || 'Login failed')
       }
 
-      router.replace(redirectTarget)
+      const data = await response.json()
+      console.log('Login response:', data)
+
+      // Small delay to ensure cookie is set
+      await new Promise(resolve => setTimeout(resolve, 100))
+
+      // Verify session before redirect
+      try {
+        const sessionResponse = await fetch('/api/admin/session', {
+          credentials: 'include',
+          cache: 'no-store',
+        })
+        
+        if (sessionResponse.ok) {
+          router.replace(redirectTarget)
+        } else {
+          throw new Error('Session verification failed')
+        }
+      } catch (err) {
+        console.error('Session verification error:', err)
+        setError('Login successful but session verification failed. Please try again.')
+        setLoading(false)
+      }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Login failed'
       setError(errorMessage)
