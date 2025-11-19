@@ -1,0 +1,34 @@
+version: '3.8'
+
+# Docker Compose for Background Worker (192.168.120.45)
+# This runs the background job processor
+
+services:
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    container_name: yametee-worker
+    environment:
+      # Database connection to external PostgreSQL (192.168.120.42)
+      - DATABASE_URL=${DATABASE_URL}
+      # Redis connection to external Redis (192.168.120.44)
+      - REDIS_URL=${REDIS_URL:-redis://192.168.120.44:6379}
+      # Application
+      - NODE_ENV=production
+    volumes:
+      - ./prisma:/app/prisma:ro
+    restart: unless-stopped
+    networks:
+      - yametee-network
+    healthcheck:
+      test: ['CMD', 'pgrep', '-f', 'tsx scripts/worker.ts']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  yametee-network:
+    driver: bridge
+    # Note: In Proxmox, ensure VMs can communicate via bridge networking

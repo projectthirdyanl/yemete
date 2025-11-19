@@ -23,11 +23,36 @@ This document describes all environment variables required for the Yametee appli
 
 **Format:** `postgresql://[user]:[password]@[host]:[port]/[database]?schema=public`
 
+**Proxmox Setup:**
+
+- Database VM: `192.168.120.42`
+- Example: `postgresql://yametee_user:password@192.168.120.42:5432/yame_tee?schema=public`
+
 **Security Notes:**
 
 - Never commit actual credentials to version control
 - Use connection pooling for production (add `?connection_limit=10&pool_timeout=20`)
 - Use SSL in production: `?sslmode=require`
+- For Proxmox internal network, SSL may not be required but is recommended
+
+### Redis Cache
+
+| Variable    | Type        | Description          | Example                       |
+| ----------- | ----------- | -------------------- | ----------------------------- |
+| `REDIS_URL` | 🟡 Optional | Redis connection URL | `redis://192.168.120.44:6379` |
+
+**Format:** `redis://[password@]host:port[/database]`
+
+**Proxmox Setup:**
+
+- Redis VM: `192.168.120.44`
+- Example: `redis://192.168.120.44:6379`
+- With password: `redis://:password@192.168.120.44:6379`
+
+**Notes:**
+
+- Redis is optional but recommended for caching and job queues
+- If Redis is unavailable, the application will continue to function (caching disabled)
 
 ### Payment Processing (PayMongo)
 
@@ -102,12 +127,41 @@ ADMIN_JWT_SECRET=[generated-secret]
 ```bash
 NODE_ENV=production
 DATABASE_URL=postgresql://user:pass@prod-db:5432/yametee_prod?sslmode=require&connection_limit=10
+REDIS_URL=redis://192.168.120.44:6379
 NEXTAUTH_URL=https://yametee.vercel.app
 PAYMONGO_SECRET_KEY=sk_live_...
 PAYMONGO_PUBLIC_KEY=pk_live_...
 PAYMONGO_WEBHOOK_SECRET=whsec_...
 NEXTAUTH_SECRET=[generated-secret]
 ADMIN_JWT_SECRET=[generated-secret]
+```
+
+### Proxmox Distributed Setup
+
+**Web Platform VM (192.168.120.50):**
+
+```bash
+NODE_ENV=production
+DATABASE_URL=postgresql://yametee_user:password@192.168.120.42:5432/yame_tee?schema=public
+REDIS_URL=redis://192.168.120.44:6379
+NEXTAUTH_URL=https://your-domain.com
+PAYMONGO_SECRET_KEY=sk_live_...
+PAYMONGO_PUBLIC_KEY=pk_live_...
+PAYMONGO_WEBHOOK_SECRET=whsec_...
+NEXTAUTH_SECRET=[generated-secret]
+ADMIN_JWT_SECRET=[generated-secret]
+PORT=3000
+HOSTNAME=0.0.0.0
+```
+
+**Background Worker VM (192.168.120.45):**
+
+```bash
+NODE_ENV=production
+DATABASE_URL=postgresql://yametee_user:password@192.168.120.42:5432/yame_tee?schema=public
+REDIS_URL=redis://192.168.120.44:6379
+# NEXTAUTH_URL not needed for worker
+# PAYMONGO_* keys not needed unless worker processes payments
 ```
 
 ## Platform-Specific Setup

@@ -18,6 +18,7 @@
     "db:studio": "prisma studio",
     "init:admin": "tsx scripts/init-admin.ts",
     "create:admin": "node scripts/create-admin.js",
+    "worker": "tsx scripts/worker.ts",
     "postinstall": "prisma generate",
     "prepare": "husky"
   },
@@ -49,6 +50,7 @@
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-hook-form": "^7.66.0",
+    "redis": "^4.7.0",
     "tailwind-merge": "^3.4.0",
     "tailwindcss-animate": "^1.0.7",
     "zod": "^3.25.76"
